@@ -1,96 +1,217 @@
 # Oria
 
-**Gamified crypto savings on Avalanche.** Deposit USDC, stay active, earn more.
+**Gamified crypto savings — your running streak boosts your APY.**
 
-Oria ties yield-bearing deposits to personal fitness goals. Users deposit into a savings jar, connect their activity tracker, and earn variable APY (4-8%) based on weekly streak consistency. The more consistent you are, the higher your yield.
+Oria ties yield-bearing crypto deposits to personal fitness goals. Users deposit USDC into a Morpho vault, connect Strava, and earn a variable APY: a 3% baseline guaranteed for everyone, plus a redistribution bonus that grows with their weekly activity score. The most active users take a bigger slice of the pool.
 
-## How It Works
+🔗 Live: [oriamvp.cloud](https://oriamvp.cloud) · API: [api.oriamvp.cloud](https://api.oriamvp.cloud)
 
-1. **Connect & Deposit** -- Sign in with Privy (social login or wallet), deposit USDC or AVAX
-2. **Set Your Goal** -- Choose a weekly km target (running, cycling, or steps)
-3. **Stay Active** -- Log activities via Strava, Apple Health, or manually
-4. **Earn More** -- Hit your weekly goal to build streaks. Longer streaks = higher APY
+---
 
-### APY Formula
+## How it works
 
-```
-APY(s) = 4 + 4 * min(1, ln(1+s) / ln(11))
-```
+1. **Sign in** with Privy (email OTP, Google, or Apple). An embedded wallet is created automatically — no seed phrase.
+2. **Set a weekly goal** in km (running, cycling, or steps).
+3. **Connect Strava** so runs are verified on-chain-of-truth (OAuth, read-only).
+4. **Fund your wallet** by sending USDC to your Oria address (QR + tap-to-copy).
+5. **Invest** into the Morpho Steakhouse Prime USDC vault on Base, directly from the app.
+6. **Run weekly** — meeting your goal grows your streak and your activity score, which lifts your APY.
 
-| Streak (weeks) | APY |
-|----------------|------|
-| 0 | 4.00% |
-| 1 | 5.40% |
-| 3 | 6.33% |
-| 6 | 7.24% |
-| 10+ | 8.00% |
+---
 
-## Tech Stack
+## APY model — pool-based redistribution
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14, Tailwind CSS, mobile-first PWA |
-| Backend | Fastify 4, TypeScript, Prisma 5, PostgreSQL |
-| Auth | Privy SDK (embedded wallets, social login) |
-| Chain | Avalanche C-Chain (Fuji testnet) |
-| Tokens | USDC, WAVAX |
-| Deployment | Vercel (frontend), Railway (backend), Supabase (DB) |
-
-## Repository Structure
+Oria sources its yield from the **Sentora rlUSD Main** vault on Morpho (Ethereum). The vault's APY (`R`) determines the pool of yield available to distribute.
 
 ```
-docs/
-  ORIA_Backend_Architecture.md   -- Backend spec: API endpoints, modules, auth flow
-  ORIA_Design_System.md          -- Design system: colors, typography, components
-  oria_frame.md                  -- Product framing (French)
-mockups/
-  OriaAppMock.jsx                -- React mock of the 4 app screens
-  OriaLanding.jsx                -- Landing page with savings jar animation
-schema.prisma                    -- Prisma data model (7 tables)
-tasks/
-  todo.md                        -- Implementation plan (15 phases)
+distributable  = R                            (no Oria spread for now)
+baseline       = 3.00 %                       (guaranteed for everyone)
+pool           = max(0, distributable − 3 %)  (shared bonus reservoir)
+your bonus     = pool × (score_i / mean_score), capped at 2 × pool
+APY effective  = baseline + your bonus,        capped at 12 %
 ```
 
-## App Screens
+The **activity score** is a composite in `[0, 1]`:
 
-The app has 4 main screens, designed mobile-first at 390px:
+| Component         | Weight | How to earn it                                              |
+|-------------------|-------:|-------------------------------------------------------------|
+| Streak            | 0.60   | Reach the 16-week max (linear ramp)                         |
+| Regularity        | 0.15   | ≥ 3 sessions per week                                       |
+| Long run          | 0.15   | One run ≥ your configured long-run distance                 |
+| Pace progression  | 0.10   | This month's avg pace faster than last month                |
 
-- **Dashboard** -- Streak hero card, weekly progress ring, APY chart, friends activity
-- **Social** -- Friends leaderboard, activity feed
-- **Challenges** -- Group challenges with progress tracking and stacked avatars
-- **Wallet** -- Balance display, deposit/withdraw, earning status, transaction history
+**Σ bonus_i = pool × N** by construction — the redistribution is conservative.
 
-High-fidelity mockups are available in the Paper design file and as React components in `mockups/`.
+---
 
-## Key Features
+## Repository layout
 
-- **Streak-based APY** -- Logarithmic curve rewards early consistency (4% base, 8% max)
-- **Social layer** -- Friend leaderboards, activity feed, streak milestones
-- **Group challenges** -- Create or join challenges with shared weekly km goals
-- **Non-custodial** -- Privy embedded wallets, user controls their funds
-- **Yield via DeFi** -- Deposits routed to Morpho/Aave on Avalanche (mocked for MVP)
+```
+backend/                          Fastify 5 API
+  prisma/
+    schema.prisma                 Postgres data model
+  src/
+    config/                       Env validation (zod), constants (APY tiers, etc.)
+    modules/
+      auth/                       Privy JWT verification, agent dev token bypass
+      users/                      Profile, settings, run schedule, run plan
+      streaks/
+        apy.utils.ts              Score + pool-distribution math
+        morpho.service.ts         GraphQL fetcher for vault APY (24h cache)
+        streaks.service.ts        Weekly evaluation cron (3-phase: scores → mean → distribute)
+      challenges/                 Create / join / delete with creator-only check
+      strava/                     OAuth exchange, sync, last-run fetch
+      social/                     Friendships, pokes, leaderboards, feed
+      push/                       Web Push notifications
 
-## MVP Scope
+frontend/                         Next.js 14 (App Router) + Tailwind, mobile-first PWA
+  public/avatars/                 8 SVG sport-themed avatar presets
+  src/
+    app/(app)/                    Authenticated routes
+      dashboard/                  Streak + balance + plan + projection + last activity
+      apy/                        APY breakdown (vault rate, pool, your score)
+      stats/                      Weekly/Monthly/All-time charts
+      wallet/                     Receive, Invest, Withdraw, balance, deposits list
+      challenges/                 Browse / create / search / delete
+      profile/                    Avatar picker, goal, schedule, connected apps
+      settings/                   Vacation, currency (USD/EUR), progression rate, notifs
+      streak/                     Streak detail + recovery flow
+    app/(onboarding)/             First-run flow (welcome → wallet → goal → fund)
+    app/landing/                  Public marketing page
+    components/
+      InvestModal.tsx             On-chain approve + deposit (ERC-4626) on Base
+      WithdrawModal.tsx           On-chain redeem
+      ReceiveSheet.tsx            QR + tap-to-copy address
+      PlanModal.tsx               Configurable weekly plan + auto-suggest
+    lib/
+      morpho.ts                   ABI selectors + RPC calls (no viem dependency)
+      hooks.ts                    React Query wrappers
+      utils.ts                    formatMoney(currency), timeAgo, getInitials
+```
 
-**Real:** Privy auth, on-chain balance reads (viem), social features, streak computation
+---
 
-**Mocked:** Strava integration, Morpho/Aave yield accrual, Safe multisig custody
+## Tech stack
 
-## Getting Started
+| Layer      | What                                                                |
+|------------|---------------------------------------------------------------------|
+| Frontend   | Next.js 14, Tailwind CSS, Privy embedded wallets, qrcode.react      |
+| Backend    | Fastify 5, TypeScript, Prisma 5, PostgreSQL (Supabase)              |
+| Auth       | Privy JWT verification + dev-token bypass for agents                |
+| On-chain   | Base (chainId 8453), raw EIP-1193 calls, Morpho ERC-4626 vault      |
+| Yield      | Morpho — Steakhouse Prime USDC and Sentora rlUSD (rate reference)   |
+| Activity   | Strava OAuth (`activity:read_all`), weekly aggregated activities    |
+| Deploy     | PM2 self-hosted (api.oriamvp.cloud, oriamvp.cloud), Nginx reverse proxy |
+| Push       | Web Push API + VAPID                                                |
 
-> Backend and frontend are not yet scaffolded. See `tasks/todo.md` for the full implementation plan.
+---
+
+## Key features
+
+- **Pool-based APY** with real-time vault rate from Morpho's Blue API
+- **On-chain invest & withdraw** to/from Morpho directly via the embedded Privy wallet (Base)
+- **Strava-only activity source** (manual entries removed for data integrity)
+- **Vacation mode**: 2-week streak freeze for travel or injury
+- **Customizable run plan**: sessions/week + optional long run, with auto-suggest from goal
+- **Currency toggle**: USD or EUR everywhere
+- **Monthly progression** rate: Maintain / +5% / +10% / +15% bumps your weekly target
+- **Group challenges**: create, join, search, delete (creator-only)
+- **8 sport-themed avatars** + photo upload, person-icon fallback when no name set
+- **Notifications**: friend requests, pokes, run reminders, streak milestones (in-app + Web Push)
+- **Stats**: weekly/monthly/all-time distance and active-period charts
+
+---
+
+## Setup (local dev)
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm
+- A Postgres database (Supabase recommended)
+- A Privy app (free): [dashboard.privy.io](https://dashboard.privy.io)
+- A Strava API app: [strava.com/settings/api](https://strava.com/settings/api)
+
+### Backend
 
 ```bash
-# Once scaffolded:
-cp .env.example .env    # Fill in Privy, Supabase, Avalanche credentials
-npm install
-npx prisma migrate dev
-npm run dev
+cd backend
+cp .env.example .env       # fill DATABASE_URL, DIRECT_URL, PRIVY_APP_ID/SECRET, etc.
+pnpm install
+pnpm prisma generate
+pnpm prisma migrate deploy
+pnpm dev                    # http://localhost:3001
 ```
 
-## Team
+Required env vars (`backend/.env`):
 
-Built for the Avalanche hackathon, March 2026.
+```
+PORT=3001
+NODE_ENV=development
+CORS_ORIGIN=http://localhost:3000
+DATABASE_URL=postgresql://...   # pgbouncer URL
+DIRECT_URL=postgresql://...     # direct URL for migrations
+PRIVY_APP_ID=...
+PRIVY_APP_SECRET=...
+STRAVA_CLIENT_ID=...
+STRAVA_CLIENT_SECRET=...
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+CRON_SECRET=any-random-string
+DEV_AGENT_TOKEN=                # optional, for agent dev access
+```
+
+### Frontend
+
+```bash
+cd frontend
+cp .env.local.example .env.local
+pnpm install
+pnpm dev                    # http://localhost:3000
+```
+
+`frontend/.env.local`:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_USE_MOCK=false
+NEXT_PUBLIC_PRIVY_APP_ID=...
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+```
+
+---
+
+## Tests
+
+```bash
+cd backend
+pnpm vitest run             # APY math (computeApy, computePoolApy, computeMultipliers)
+```
+
+---
+
+## Production deployment
+
+The live instance runs on a single Linux box via PM2:
+
+- `oria-api` — Fastify on `:3002`, behind Nginx at `api.oriamvp.cloud`
+- `oria-frontend` — Next.js prod build on `:3000`, behind Nginx at `oriamvp.cloud`
+
+Cron jobs hit `POST /api/cron/...` endpoints daily (gated by `CRON_SECRET`).
+
+---
+
+## Roadmap
+
+- [ ] Daily cron to refresh Morpho vault rate (currently lazy 24h cache)
+- [ ] Per-session activity model (currently weekly-aggregated) for proper pace tracking
+- [ ] Apple Health integration (currently stubbed)
+- [ ] Sentora rlUSD vault used as APY reference — switch yield deposits to it
+- [ ] Mobile native wrapper (iOS/Android via Capacitor or expo)
+- [ ] Slippage controls and EIP-7702 batch tx when Privy supports it
+
+---
 
 ## License
 

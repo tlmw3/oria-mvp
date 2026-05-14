@@ -474,8 +474,8 @@ export default function LandingPage() {
               ))}
             </div>
           </Reveal>
-          <div className="text-center mt-5 text-xs tabular-nums" style={{ color: "rgba(196,181,253,0.4)" }}>
-            APY(s) = 4 + 4 × min(1, ln(1+s) / ln(11)) — powered by Morpho lending
+          <div className="text-center mt-5 text-xs" style={{ color: "rgba(196,181,253,0.4)" }}>
+            Streak-based APY tiers — powered by Morpho lending
           </div>
         </div>
       </section>

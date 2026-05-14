@@ -10,6 +10,7 @@ import { getInitials } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
+import { DEFAULT_AVATARS } from "@/lib/defaultAvatars";
 
 export default function ProfilePage() {
   const { data: user, isLoading, refetch } = useUser();
@@ -131,6 +132,33 @@ export default function ProfilePage() {
             Remove photo
           </button>
         )}
+
+        {/* Default avatar picker */}
+        <div className="mt-5 w-full max-w-[300px]">
+          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider text-center mb-2.5">
+            Or pick a preset
+          </p>
+          <div className="grid grid-cols-4 gap-2.5">
+            {DEFAULT_AVATARS.map((url) => {
+              const active = avatarUrl === url;
+              return (
+                <button
+                  key={url}
+                  onClick={() => setAvatarUrl(url)}
+                  className={`aspect-square rounded-full overflow-hidden transition-all cursor-pointer ${
+                    active
+                      ? "ring-2 ring-accent-purple-bright ring-offset-2 ring-offset-[#07070B] scale-105"
+                      : "opacity-80 hover:opacity-100"
+                  }`}
+                  aria-label="Choose avatar"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Display Name */}

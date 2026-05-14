@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import type { CreateChallengeBody } from "./challenges.schemas.js";
-import { BadRequestError, NotFoundError } from "../../lib/errors.js";
+import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.js";
 
 export async function createChallenge(
   prisma: PrismaClient,
@@ -78,6 +78,23 @@ export async function joinChallenge(
   return prisma.challengeMember.create({
     data: { challengeId, userId },
   });
+}
+
+export async function deleteChallenge(
+  prisma: PrismaClient,
+  userId: string,
+  challengeId: string,
+) {
+  const challenge = await prisma.challenge.findUnique({
+    where: { id: challengeId },
+    select: { id: true, creatorId: true },
+  });
+  if (!challenge) throw new NotFoundError("Challenge");
+  if (challenge.creatorId !== userId) {
+    throw new ForbiddenError("Only the creator can delete this challenge");
+  }
+  await prisma.challenge.delete({ where: { id: challengeId } });
+  return { ok: true };
 }
 
 export async function getChallengeDetails(

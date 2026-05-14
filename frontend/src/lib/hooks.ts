@@ -19,6 +19,18 @@ interface Streak {
   weekLongestRun: number;
   monthAvgPace: number;
   prevMonthAvgPace: number;
+  vacationUntil: string | null;
+  activityScore: number;
+  poolBonus: number;
+  apyBreakdown?: {
+    vaultRate: number;
+    spread: number;
+    baseline: number;
+    poolRate: number;
+    bonus: number;
+    effective: number;
+    meanScore: number;
+  };
   currentWeek: {
     weekStart: string;
     distanceKm: number;
@@ -43,6 +55,9 @@ interface User {
     privacyShowOnLeaderboard?: boolean;
     privacyShowActivityToFriends?: boolean;
     unitsKm?: boolean;
+    currency?: "USD" | "EUR";
+    monthlyProgressionPct?: number;
+    runPlan?: { sessionsPerWeek: number; longRunKm: number };
   };
   streak: {
     currentCount: number;
@@ -212,6 +227,22 @@ export function useStreak() {
   return useQuery<Streak>({
     queryKey: ["streak", "me"],
     queryFn: () => apiFetch("/api/streaks/me"),
+  });
+}
+
+export function useStartVacation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch("/api/streaks/vacation", { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["streak", "me"] }),
+  });
+}
+
+export function useEndVacation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch("/api/streaks/vacation", { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["streak", "me"] }),
   });
 }
 
@@ -577,6 +608,17 @@ export function useJoinChallenge() {
   return useMutation({
     mutationFn: (challengeId: string) =>
       apiFetch(`/api/challenges/${challengeId}/join`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["challenges"] });
+    },
+  });
+}
+
+export function useDeleteChallenge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (challengeId: string) =>
+      apiFetch(`/api/challenges/${challengeId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["challenges"] });
     },

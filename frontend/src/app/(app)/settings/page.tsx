@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/Card";
 import { CardSkeleton } from "@/components/Skeleton";
-import { useUser } from "@/lib/hooks";
+import { useUser, useStreak, useStartVacation, useEndVacation } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
 import { apiFetch } from "@/lib/api";
 import { isPushSupported, isPushSubscribed, subscribeToPush, unsubscribeFromPush } from "@/lib/push";
@@ -17,6 +17,8 @@ interface Settings {
   privacyShowOnLeaderboard: boolean;
   privacyShowActivityToFriends: boolean;
   unitsKm: boolean;
+  currency: "USD" | "EUR";
+  monthlyProgressionPct: number;
 }
 
 const DEFAULTS: Settings = {
@@ -27,6 +29,8 @@ const DEFAULTS: Settings = {
   privacyShowOnLeaderboard: true,
   privacyShowActivityToFriends: true,
   unitsKm: true,
+  currency: "USD",
+  monthlyProgressionPct: 10,
 };
 
 function Toggle({
@@ -69,6 +73,9 @@ function Toggle({
 
 export default function SettingsPage() {
   const { data: user, isLoading, refetch } = useUser();
+  const { data: streak } = useStreak();
+  const startVacation = useStartVacation();
+  const endVacation = useEndVacation();
   const { toast } = useToast();
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
   const [saving, setSaving] = useState(false);
@@ -76,6 +83,12 @@ export default function SettingsPage() {
   const [pushSupported, setPushSupported] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+
+  const vacationActive = !!streak?.vacationUntil && new Date(streak.vacationUntil) > new Date();
+  const vacationEndsAt = streak?.vacationUntil ? new Date(streak.vacationUntil) : null;
+  const vacationDaysLeft = vacationEndsAt
+    ? Math.max(0, Math.ceil((vacationEndsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : 0;
 
   useEffect(() => {
     if (user?.settings) {
@@ -116,7 +129,7 @@ export default function SettingsPage() {
     }
   };
 
-  const update = (key: keyof Settings, value: boolean) => {
+  const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setDirty(true);
   };
@@ -163,6 +176,67 @@ export default function SettingsPage() {
         </Link>
         <h1 className="text-2xl font-bold text-text-primary tracking-tight">Settings</h1>
       </div>
+
+      {/* Vacation mode */}
+      <Card>
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="w-8 h-8 rounded-lg bg-accent-sport/15 border border-accent-sport/25 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FC4C02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </div>
+          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Vacation mode</p>
+        </div>
+        <div className="py-3">
+          <p className="text-[13px] text-text-secondary leading-relaxed">
+            Freeze your streak and APY progression for 2 weeks — in case of vacation or injury. The
+            weekly evaluation won&apos;t reset your streak while active.
+          </p>
+        </div>
+        {vacationActive ? (
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-accent-sport/10 border border-accent-sport/25">
+              <div className="w-2 h-2 rounded-full bg-accent-sport animate-pulse" />
+              <p className="text-[12px] text-accent-sport font-semibold flex-1">
+                Vacation active — {vacationDaysLeft} day{vacationDaysLeft === 1 ? "" : "s"} left
+              </p>
+              <span className="text-[11px] text-text-muted tabular-nums">
+                Ends {vacationEndsAt?.toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                endVacation.mutate(undefined, {
+                  onSuccess: () => toast("Vacation mode ended"),
+                  onError: () => toast("Failed to end vacation", "error"),
+                });
+              }}
+              disabled={endVacation.isPending}
+              className="w-full py-3 rounded-xl border border-oria bg-oria-chip text-text-secondary font-semibold text-[13px] cursor-pointer disabled:opacity-50 hover:bg-oria-elevated transition-colors"
+            >
+              {endVacation.isPending ? "Ending…" : "End vacation early"}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Freeze your streak for 2 weeks? Your current streak count and APY will be preserved.")) {
+                startVacation.mutate(undefined, {
+                  onSuccess: () => toast("Vacation mode started — your streak is frozen"),
+                  onError: () => toast("Failed to start vacation", "error"),
+                });
+              }
+            }}
+            disabled={startVacation.isPending}
+            className="w-full py-3 rounded-xl gradient-brand text-white font-semibold text-[13px] shadow-button cursor-pointer disabled:opacity-50"
+          >
+            {startVacation.isPending ? "Starting…" : "Start 2-week vacation"}
+          </button>
+        )}
+      </Card>
 
       {/* Push Notifications */}
       {pushSupported && (
@@ -292,6 +366,78 @@ export default function SettingsPage() {
             label={settings.unitsKm ? "Kilometers" : "Miles"}
             description={settings.unitsKm ? "Switch to miles" : "Switch to kilometers"}
           />
+        </div>
+      </Card>
+
+      {/* Monthly progression */}
+      <Card>
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="w-8 h-8 rounded-lg bg-accent-gold/15 border border-accent-gold/25 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+              <polyline points="16 7 22 7 22 13" />
+            </svg>
+          </div>
+          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Monthly progression</p>
+        </div>
+        <div className="py-3">
+          <p className="text-[12px] text-text-muted mb-3 leading-relaxed">
+            How much your weekly target should grow each month. Pick <strong>Maintenance</strong> to
+            keep the same target, or a higher rate to gradually push yourself.
+          </p>
+          <div className="grid grid-cols-4 gap-1.5 p-1 rounded-2xl bg-oria-chip border border-oria">
+            {[
+              { value: 0, label: "Maintain" },
+              { value: 5, label: "+5%" },
+              { value: 10, label: "+10%" },
+              { value: 15, label: "+15%" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => update("monthlyProgressionPct", opt.value)}
+                className={`py-2.5 rounded-xl text-[12px] font-semibold transition-colors cursor-pointer ${
+                  settings.monthlyProgressionPct === opt.value
+                    ? "gradient-brand text-white shadow-button"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Currency */}
+      <Card>
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="w-8 h-8 rounded-lg bg-success-500/15 border border-success-500/25 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            </svg>
+          </div>
+          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Currency</p>
+        </div>
+        <div className="py-3">
+          <p className="text-[12px] text-text-muted mb-3 leading-relaxed">
+            Display balances and earnings in your preferred currency. EUR is converted at a fixed rate of 0.92 (rate refresh coming soon).
+          </p>
+          <div className="flex gap-1.5 p-1 rounded-2xl bg-oria-chip border border-oria">
+            {(["USD", "EUR"] as const).map((c) => (
+              <button
+                key={c}
+                onClick={() => update("currency", c)}
+                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${
+                  settings.currency === c
+                    ? "gradient-brand text-white shadow-button"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {c === "USD" ? "$ USD" : "€ EUR"}
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
 

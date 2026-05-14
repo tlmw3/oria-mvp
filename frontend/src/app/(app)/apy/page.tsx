@@ -5,11 +5,12 @@ import { Card } from "@/components/Card";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useStreak, useUser } from "@/lib/hooks";
 
-function computeApy(s: number) {
-  return 4 + 4 * Math.min(1, Math.log(1 + s) / Math.log(11));
-}
-
-const MILESTONES = [0, 1, 2, 3, 5, 8, 10];
+const SCORE_BREAKDOWN = [
+  { key: "streak", label: "Streak (palier)", weight: 0.6 },
+  { key: "regularity", label: "Regularity (3+ sessions/week)", weight: 0.15 },
+  { key: "longRun", label: "Long run target hit", weight: 0.15 },
+  { key: "progression", label: "Pace progression", weight: 0.1 },
+];
 
 export default function ApyDetailPage() {
   const { data: streak, isLoading: streakLoading } = useStreak();
@@ -30,13 +31,35 @@ export default function ApyDetailPage() {
     );
   }
 
+  const b = streak?.apyBreakdown;
+  const vaultRate = b?.vaultRate ?? 0;
+  const spread = b?.spread ?? 1;
+  const baseline = b?.baseline ?? 3;
+  const poolRate = b?.poolRate ?? 0;
+  const myBonus = b?.bonus ?? 0;
+  const effective = b?.effective ?? baseline;
+  const meanScore = b?.meanScore ?? 0;
+  const score = streak?.activityScore ?? 0;
   const count = streak?.currentCount ?? 0;
-  const apy = streak?.currentApy ?? 4;
-  const effectiveApy = streak?.effectiveApy ?? apy;
-  const regularityBonus = streak?.regularityBonus ?? 0;
-  const longRunBonus = streak?.longRunBonus ?? 0;
-  const progressionBonus = streak?.progressionBonus ?? 0;
+  const weekSessions = streak?.weekSessions ?? 0;
+  const longestRun = streak?.weekLongestRun ?? 0;
   const targetKm = user?.targetKm ?? 10;
+  const plan = user?.settings?.runPlan;
+  const longRunTarget = plan?.longRunKm && plan.longRunKm > 0 ? plan.longRunKm : targetKm * 1.5;
+
+  // Live score components (mirror backend logic for display)
+  const streakComp = 0.6 * Math.min(1, Math.max(0, count / 16));
+  const regularityComp = weekSessions >= 3 ? 0.15 : 0;
+  const longRunComp = longestRun >= longRunTarget ? 0.15 : 0;
+  const progressionComp = (streak?.monthAvgPace ?? 0) > 0 && (streak?.prevMonthAvgPace ?? 0) > 0 && (streak?.monthAvgPace ?? 0) < (streak?.prevMonthAvgPace ?? 0) ? 0.1 : 0;
+  const scoreComponents: Record<string, number> = {
+    streak: streakComp,
+    regularity: regularityComp,
+    longRun: longRunComp,
+    progression: progressionComp,
+  };
+
+  const relativeRatio = meanScore > 0 ? score / meanScore : 1;
 
   return (
     <div className="flex flex-col gap-4">
@@ -52,175 +75,133 @@ export default function ApyDetailPage() {
       <Card className="relative overflow-hidden !p-6 text-center">
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.2)_0%,transparent_60%)] blur-[30px] pointer-events-none" />
         <div className="relative">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Effective APY</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Your effective APY</p>
           <p className="text-[56px] font-extrabold text-accent-purple-bright mt-2 leading-none tabular-nums animate-count-pop">
-            {effectiveApy.toFixed(2)}
+            {effective.toFixed(2)}
             <span className="text-[24px] text-text-muted">%</span>
           </p>
           <p className="text-sm text-text-secondary mt-2">
-            Based on {count}-week streak + bonuses
+            Baseline {baseline.toFixed(2)}% + bonus {myBonus.toFixed(2)}%
           </p>
         </div>
       </Card>
 
-      {/* Breakdown */}
+      {/* Breakdown — APY math */}
       <Card className="!p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-4">Breakdown</p>
-        <div className="flex flex-col gap-3">
-          {/* Base */}
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full gradient-brand" />
-                <span className="text-[13px] text-text-secondary">Base streak ({count}w)</span>
-              </div>
-              <span className="text-[14px] font-bold text-text-primary tabular-nums">{apy.toFixed(2)}%</span>
-            </div>
-            <div className="h-2 rounded-full bg-oria-chip overflow-hidden ml-[18px]">
-              <div className="h-full rounded-full gradient-brand animate-bar" style={{ width: `${(apy / 8) * 100}%` }} />
-            </div>
-          </div>
-
-          {/* Regularity */}
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${regularityBonus > 0 ? "bg-success-500" : "bg-oria-chip"}`} />
-                <span className={`text-[13px] ${regularityBonus > 0 ? "text-text-secondary" : "text-text-muted"}`}>
-                  Regularity ({streak?.weekSessions ?? 0} sessions)
-                </span>
-              </div>
-              <span className={`text-[14px] font-bold tabular-nums ${regularityBonus > 0 ? "text-success-500" : "text-text-muted"}`}>
-                +{regularityBonus.toFixed(2)}%
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-oria-chip overflow-hidden ml-[18px]">
-              <div className={`h-full rounded-full ${regularityBonus > 0 ? "bg-success-500 animate-bar" : ""}`} style={{ width: `${Math.min(100, regularityBonus * 100)}%` }} />
-            </div>
-            <p className="text-[11px] text-text-muted mt-1 ml-[18px]">
-              Run 3+ times/week for bonus
-            </p>
-          </div>
-
-          {/* Long run */}
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${longRunBonus > 0 ? "bg-accent-sport" : "bg-oria-chip"}`} />
-                <span className={`text-[13px] ${longRunBonus > 0 ? "text-text-secondary" : "text-text-muted"}`}>
-                  Long run ({(streak?.weekLongestRun ?? 0).toFixed(1)} km)
-                </span>
-              </div>
-              <span className={`text-[14px] font-bold tabular-nums ${longRunBonus > 0 ? "text-accent-sport" : "text-text-muted"}`}>
-                +{longRunBonus.toFixed(2)}%
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-oria-chip overflow-hidden ml-[18px]">
-              <div className={`h-full rounded-full ${longRunBonus > 0 ? "bg-accent-sport animate-bar" : ""}`} style={{ width: `${Math.min(100, longRunBonus * 100)}%` }} />
-            </div>
-            <p className="text-[11px] text-text-muted mt-1 ml-[18px]">
-              One run over {(targetKm * 1.5).toFixed(0)} km triggers this bonus
-            </p>
-          </div>
-
-          {/* Progression */}
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${progressionBonus > 0 ? "bg-accent-gold" : "bg-oria-chip"}`} />
-                <span className={`text-[13px] ${progressionBonus > 0 ? "text-text-secondary" : "text-text-muted"}`}>
-                  Pace progression
-                </span>
-              </div>
-              <span className={`text-[14px] font-bold tabular-nums ${progressionBonus > 0 ? "text-accent-gold" : "text-text-muted"}`}>
-                +{progressionBonus.toFixed(2)}%
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-oria-chip overflow-hidden ml-[18px]">
-              <div className={`h-full rounded-full ${progressionBonus > 0 ? "bg-accent-gold animate-bar" : ""}`} style={{ width: `${Math.min(100, progressionBonus * 100)}%` }} />
-            </div>
-            <p className="text-[11px] text-text-muted mt-1 ml-[18px]">
-              Improve avg pace month-over-month
-            </p>
-          </div>
-
-          {/* Total */}
-          <div className="border-t border-oria mt-2 pt-3">
-            <div className="flex justify-between items-center">
-              <span className="text-[14px] font-bold text-text-primary">Effective APY</span>
-              <span className="text-[18px] font-extrabold text-accent-purple-bright tabular-nums">{effectiveApy.toFixed(2)}%</span>
-            </div>
-          </div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-4">How your APY is built</p>
+        <div className="flex flex-col gap-2">
+          <Row label="Steakhouse Prime USDC (Morpho)" value={`${vaultRate.toFixed(2)}%`} muted />
+          <Row label="Oria spread" value={`−${spread.toFixed(2)}%`} muted />
+          <div className="h-px bg-oria my-1.5" />
+          <Row label="Distributable" value={`${(vaultRate - spread).toFixed(2)}%`} muted />
+          <Row label="Baseline (guaranteed)" value={`${baseline.toFixed(2)}%`} color="text-accent-purple-bright" />
+          <Row label="Bonus pool available" value={`${poolRate.toFixed(2)}%`} muted />
+          <div className="h-px bg-oria my-1.5" />
+          <Row label="Your activity bonus" value={`+${myBonus.toFixed(2)}%`} color="text-success-500" bold />
+          <Row label="Your total" value={`${effective.toFixed(2)}%`} color="text-accent-purple-bright" bold large />
         </div>
+        <p className="text-[11px] text-text-muted mt-4 leading-relaxed">
+          The bonus pool ({poolRate.toFixed(2)}%) is redistributed among all users based on activity score. Active users get more, inactive users get only the baseline.
+        </p>
       </Card>
 
-      {/* APY Curve */}
+      {/* Score breakdown */}
       <Card className="!p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-4">Base APY by Streak</p>
-        <div className="flex flex-col gap-2">
-          {MILESTONES.map((m) => {
-            const apyAtM = computeApy(m);
-            const reached = count >= m;
-            const isCurrent = m === count;
+        <div className="flex items-baseline justify-between mb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Your activity score</p>
+          <p className="text-[20px] font-extrabold text-accent-purple-bright tabular-nums leading-none">{score.toFixed(2)}</p>
+        </div>
+        <p className="text-[11px] text-text-muted mb-4">
+          {relativeRatio > 1.1
+            ? `You're ${(relativeRatio).toFixed(1)}× more active than the average user → bigger slice of the pool.`
+            : relativeRatio < 0.9
+              ? `You're below average (×${relativeRatio.toFixed(2)}). More activity unlocks more bonus.`
+              : "You're around the average. Get more active to climb above."}
+        </p>
+        <div className="flex flex-col gap-3">
+          {SCORE_BREAKDOWN.map((c) => {
+            const val = scoreComponents[c.key];
+            const pct = (val / c.weight) * 100;
             return (
-              <div key={m} className="flex items-center gap-3">
-                <span className={`text-[12px] font-semibold tabular-nums w-6 text-right ${reached ? "text-accent-purple-bright" : "text-text-muted"}`}>
-                  {m}w
-                </span>
-                <div className="flex-1 h-2.5 rounded-full bg-oria-chip overflow-hidden">
+              <div key={c.key}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[13px] text-text-secondary">{c.label}</span>
+                  <span className={`text-[12px] font-semibold tabular-nums ${val > 0 ? "text-text-primary" : "text-text-muted"}`}>
+                    {val.toFixed(2)} / {c.weight.toFixed(2)}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-oria-chip overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${reached ? "gradient-brand" : "bg-oria-chip"} ${reached ? "animate-bar" : ""}`}
-                    style={{ width: `${(apyAtM / 8) * 100}%`, animationDelay: `${m * 0.05}s` }}
+                    className={`h-full rounded-full transition-all duration-700 ${val > 0 ? "bg-gradient-to-r from-accent-purple to-accent-purple-bright" : ""}`}
+                    style={{ width: `${Math.min(100, pct)}%` }}
                   />
                 </div>
-                <span className={`text-[13px] font-semibold tabular-nums w-14 text-right ${isCurrent ? "text-accent-purple-bright" : reached ? "text-text-primary" : "text-text-muted"}`}>
-                  {apyAtM.toFixed(2)}%
-                </span>
-                {isCurrent && (
-                  <div className="w-2 h-2 rounded-full bg-accent-purple-bright animate-pulse" />
-                )}
               </div>
             );
           })}
         </div>
-        <p className="text-[11px] text-text-muted mt-3 text-center">
-          APY = 4 + 4 * min(1, ln(1+s) / ln(11))
+        <p className="text-[11px] text-text-muted mt-4">
+          Score caps at 1.00 — max all 4 components for the strongest bonus slice.
         </p>
       </Card>
 
       {/* How to maximize */}
       <Card className="!p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-3">How to maximize APY</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-3">How to maximize your bonus</p>
         <div className="flex flex-col gap-3">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-text-primary">Hit your weekly goal</p>
-              <p className="text-[12px] text-text-muted">Run {targetKm} km each week to build your streak</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-success-500/15 border border-success-500/25 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M7 16l4-8 4 4 6-8" /></svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-text-primary">Run regularly</p>
-              <p className="text-[12px] text-text-muted">3+ sessions/week unlocks regularity bonus</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent-sport/15 border border-accent-sport/25 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FC4C02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /></svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-text-primary">Do a long run</p>
-              <p className="text-[12px] text-text-muted">One run over {(targetKm * 1.5).toFixed(0)} km for the long run bonus</p>
-            </div>
-          </div>
+          <Tip
+            color="purple"
+            title="Build your streak"
+            desc="Each week of consecutive goal completion raises your streak component up to the 16-week max."
+          />
+          <Tip
+            color="green"
+            title="Hit 3+ sessions per week"
+            desc="Unlocks the regularity sub-score."
+          />
+          <Tip
+            color="orange"
+            title="Do your long session"
+            desc={`Hit your configured long ${user?.goalType === "cycling" ? "ride" : "run"} of ${longRunTarget.toFixed(0)}+ km this week.`}
+          />
+          <Tip
+            color="gold"
+            title="Improve your pace"
+            desc="Run faster than last month's average to unlock the progression component."
+          />
         </div>
       </Card>
+    </div>
+  );
+}
+
+function Row({ label, value, color, muted, bold, large }: {
+  label: string; value: string; color?: string; muted?: boolean; bold?: boolean; large?: boolean;
+}) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className={`text-[13px] ${muted ? "text-text-muted" : "text-text-secondary"}`}>{label}</span>
+      <span className={`tabular-nums ${large ? "text-[18px]" : "text-[14px]"} ${bold ? "font-extrabold" : "font-semibold"} ${color ?? "text-text-primary"}`}>{value}</span>
+    </div>
+  );
+}
+
+function Tip({ color, title, desc }: { color: "purple" | "green" | "orange" | "gold"; title: string; desc: string }) {
+  const bg = {
+    purple: "bg-accent-purple/15 border-accent-purple/25",
+    green: "bg-success-500/15 border-success-500/25",
+    orange: "bg-accent-sport/15 border-accent-sport/25",
+    gold: "bg-accent-gold/15 border-accent-gold/25",
+  }[color];
+  return (
+    <div className="flex items-start gap-3">
+      <div className={`w-8 h-8 rounded-lg ${bg} border flex items-center justify-center flex-shrink-0 mt-0.5`}>
+        <span className="w-2 h-2 rounded-full bg-current opacity-80" />
+      </div>
+      <div>
+        <p className="text-[13px] font-semibold text-text-primary">{title}</p>
+        <p className="text-[12px] text-text-muted">{desc}</p>
+      </div>
     </div>
   );
 }

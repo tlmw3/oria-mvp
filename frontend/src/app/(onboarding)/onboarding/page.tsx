@@ -3,10 +3,29 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/Card";
-import { MiniJar } from "@/components/MiniJar";
 import { apiFetch, setAuthTokenGetter } from "@/lib/api";
-import { usePrivy, useLogin } from "@privy-io/react-auth";
-import { useOnChainDeposit } from "@/lib/useOnChainDeposit";
+import { usePrivy, useLogin, type User } from "@privy-io/react-auth";
+import { QRCodeSVG } from "qrcode.react";
+import { useWalletBalance } from "@/lib/hooks";
+import { useToast } from "@/components/Toast";
+import { randomDefaultAvatar } from "@/lib/defaultAvatars";
+
+function deriveDisplayName(user: User): string {
+  const u = user as unknown as {
+    google?: { name?: string; email?: string };
+    apple?: { email?: string };
+    email?: { address?: string };
+  };
+  const candidates = [
+    u.google?.name?.trim(),
+    u.email?.address?.split("@")[0],
+    u.google?.email?.split("@")[0],
+    u.apple?.email?.split("@")[0],
+  ].filter((s): s is string => !!s && s.length > 0);
+  if (candidates.length > 0) return candidates[0].slice(0, 50);
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `Runner-${suffix}`;
+}
 
 const STEPS = 4;
 
@@ -97,7 +116,8 @@ function ConnectWalletStep({
           method: "POST",
           body: JSON.stringify({
             walletAddr,
-            displayName: params.user.email?.address?.split("@")[0],
+            displayName: deriveDisplayName(params.user),
+            avatarUrl: randomDefaultAvatar(),
           }),
         }) as { isNew?: boolean };
         if (data?.isNew === false) isNew = false;
@@ -342,7 +362,7 @@ function ChooseGoalStep({
   );
 }
 
-// ─── Step 4: Fund Wallet ───
+// ─── Step 4: Fund Wallet — show address + QR for the user to receive crypto ───
 function FundWalletStep({
   onNext,
   onBack,
@@ -350,27 +370,21 @@ function FundWalletStep({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const [token, setToken] = useState("USDC");
-  const [amount, setAmount] = useState("");
-  const onChainDeposit = useOnChainDeposit();
+  const { data: wallet } = useWalletBalance();
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+  const addr = wallet?.walletAddr ?? null;
+  const short = addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
 
-  const quickAmounts = [50, 100, 500, 1000];
-  const fillPercent = Math.min(
-    100,
-    Math.round((parseFloat(amount || "0") / 1000) * 100),
-  );
-
-  const handleDeposit = async () => {
-    const numAmount = parseFloat(amount || "0");
-    if (numAmount <= 0) {
-      onNext();
-      return;
-    }
+  const copy = async () => {
+    if (!addr) return;
     try {
-      await onChainDeposit.deposit(numAmount, token);
-      onNext();
+      await navigator.clipboard.writeText(addr);
+      setCopied(true);
+      toast("Address copied!");
+      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Error is captured in onChainDeposit.error — don't navigate
+      toast("Failed to copy", "error");
     }
   };
 
@@ -379,8 +393,7 @@ function FundWalletStep({
       <div className="flex items-center gap-3 mb-2">
         <button
           onClick={onBack}
-          disabled={onChainDeposit.isPending}
-          className="w-10 h-10 rounded-md flex items-center justify-center bg-purple-50 border-none cursor-pointer disabled:opacity-50"
+          className="w-10 h-10 rounded-md flex items-center justify-center bg-purple-50 border-none cursor-pointer"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -393,103 +406,76 @@ function FundWalletStep({
           Step 3 of 3
         </p>
         <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-          Fund Your Jar
+          Fund your Oria wallet
         </h1>
         <p className="text-sm text-text-secondary mt-2 leading-relaxed">
-          Deposit crypto to start earning yield. Your funds are non-custodial
-          and always yours.
+          Scan or copy your address to fund your wallet from any exchange or other wallet. Funds start earning yield as soon as they arrive.
         </p>
       </div>
 
-      {/* Jar illustration */}
+      {/* QR */}
       <div className="flex justify-center my-6">
-        <MiniJar fill={fillPercent} size={80} />
-      </div>
-
-      {/* Token toggle */}
-      <div className="mb-5">
-        <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3 block">
-          Token
-        </label>
-        <div className="flex gap-2">
-          {["USDC", "WAVAX"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setToken(t)}
-              disabled={onChainDeposit.isPending}
-              className={`flex-1 py-3 rounded-xl text-sm font-semibold cursor-pointer transition-all disabled:opacity-50 ${
-                token === t
-                  ? "gradient-brand text-white shadow-button"
-                  : "bg-purple-50 text-purple-600 border border-oria"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+        <div className="p-4 bg-white rounded-2xl shadow-card">
+          {addr ? (
+            <QRCodeSVG value={addr} size={188} level="M" bgColor="#FFFFFF" fgColor="#0B0B11" />
+          ) : (
+            <div className="w-[188px] h-[188px] flex items-center justify-center text-text-muted text-sm">
+              Loading wallet…
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Amount input */}
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3 block">
-          Amount
-        </label>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-text-muted font-medium">
-            $
-          </span>
-          <input
-            type="number"
-            step="1"
-            min="0"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            disabled={onChainDeposit.isPending}
-            placeholder="0"
-            className="w-full pl-9 pr-4 py-4 rounded-xl border border-oria bg-white/80 text-[22px] font-bold text-text-primary focus:border-purple-600 outline-none tabular-nums tracking-tight disabled:opacity-50"
-          />
-        </div>
-      </div>
-
-      {/* Quick amounts */}
-      <div className="flex gap-2 mb-6">
-        {quickAmounts.map((a) => (
-          <button
-            key={a}
-            onClick={() => setAmount(String(a))}
-            disabled={onChainDeposit.isPending}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors disabled:opacity-50 ${
-              amount === String(a)
-                ? "gradient-brand text-white"
-                : "bg-purple-50 text-purple-600 border border-oria"
-            }`}
-          >
-            ${a}
-          </button>
-        ))}
-      </div>
-
-      {/* Error message */}
-      {onChainDeposit.error && (
-        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
-          <p className="text-sm text-red-600">{onChainDeposit.error}</p>
-        </div>
+      {/* Address — tap to copy */}
+      {addr && (
+        <button
+          onClick={copy}
+          className="w-full mb-4 px-4 py-3 rounded-2xl bg-oria-card border border-oria flex items-center justify-between gap-3 cursor-pointer hover:bg-oria-card-hover transition-colors group"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-accent-purple/15 border border-accent-purple/25 flex items-center justify-center flex-shrink-0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" />
+                <path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z" />
+              </svg>
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">Your Oria wallet</p>
+              <p className="text-[13px] font-mono text-text-primary truncate">{short}</p>
+            </div>
+          </div>
+          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-oria-chip border border-oria flex items-center justify-center group-hover:bg-accent-purple/15 transition-colors">
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA0AC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+              </svg>
+            )}
+          </div>
+        </button>
       )}
 
-      <div className="mt-auto pt-4 flex flex-col gap-3">
+      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-warning-100 border border-warning-500/25">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <p className="text-[12px] text-warning-500 leading-relaxed">
+          Make sure you&apos;re sending on a supported network. Transfers on unsupported chains may result in loss of funds.
+        </p>
+      </div>
+
+      <div className="mt-auto pt-6 flex flex-col gap-3">
         <button
-          onClick={handleDeposit}
-          disabled={onChainDeposit.isPending}
-          className="w-full h-[52px] rounded-[14px] gradient-brand text-white font-semibold text-base shadow-button cursor-pointer border-none disabled:opacity-70"
+          onClick={onNext}
+          className="w-full h-[52px] rounded-[14px] gradient-brand text-white font-semibold text-base shadow-button cursor-pointer border-none"
         >
-          {onChainDeposit.buttonText("Deposit & Start Earning")}
-        </button>
-        <button
-          onClick={() => onNext()}
-          disabled={onChainDeposit.isPending}
-          className="w-full py-3 text-sm text-purple-400 font-medium cursor-pointer bg-transparent border-none disabled:opacity-50"
-        >
-          Skip for now
+          I&apos;ve sent funds (or do it later)
         </button>
         <ProgressDots current={3} total={STEPS} />
       </div>

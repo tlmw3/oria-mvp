@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/Card";
 import { CardSkeleton } from "@/components/Skeleton";
 import { ProgressChart } from "@/components/ProgressChart";
 import { useActivities, useStreak, useUser } from "@/lib/hooks";
-import { LogActivityModal } from "@/components/LogActivityModal";
 
 export default function ActivitiesPage() {
   const { data: activities, isLoading } = useActivities(52);
   const { data: streak } = useStreak();
   const { data: user } = useUser();
-  const [showLogModal, setShowLogModal] = useState(false);
 
   const targetKm = user?.targetKm ?? 10;
   const currentKm = streak?.currentWeek?.distanceKm ?? 0;
@@ -47,12 +44,6 @@ export default function ActivitiesPage() {
           </Link>
           <h1 className="text-xl font-bold text-text-primary tracking-tight">Activities</h1>
         </div>
-        <button
-          onClick={() => setShowLogModal(true)}
-          className="px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold cursor-pointer border-none active:scale-95 transition-transform"
-        >
-          + Log run
-        </button>
       </div>
 
       {/* Stats summary */}
@@ -159,12 +150,10 @@ export default function ActivitiesPage() {
             );
           })}
           {sorted.length === 0 && (
-            <p className="text-sm text-text-muted py-4 text-center">No activities yet. Log your first run!</p>
+            <p className="text-sm text-text-muted py-4 text-center">No activities yet — sync with Strava to import your runs.</p>
           )}
         </div>
       </Card>
-
-      <LogActivityModal open={showLogModal} onClose={() => setShowLogModal(false)} />
     </div>
   );
 }

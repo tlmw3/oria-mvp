@@ -21,6 +21,7 @@ export async function verifyAndUpsertUser(
       privyId,
       walletAddr: body.walletAddr,
       displayName: body.displayName,
+      avatarUrl: body.avatarUrl ?? undefined,
       streak: {
         create: {
           currentCount: 0,

@@ -9,6 +9,8 @@ import {
   getMyStreak,
   recoverStreak,
   evaluateStreaks,
+  startVacation,
+  endVacation,
 } from "./streaks.service.js";
 
 export default async function streaksRoutes(app: FastifyInstance) {
@@ -37,5 +39,15 @@ export default async function streaksRoutes(app: FastifyInstance) {
   app.post("/streaks/evaluate", async (_request, reply) => {
     const results = await evaluateStreaks(app.prisma);
     return reply.send({ evaluated: results.length, results });
+  });
+
+  app.post("/streaks/vacation", async (request, reply) => {
+    const result = await startVacation(app.prisma, request.userId);
+    return reply.send(result);
+  });
+
+  app.delete("/streaks/vacation", async (request, reply) => {
+    const result = await endVacation(app.prisma, request.userId);
+    return reply.send(result);
   });
 }

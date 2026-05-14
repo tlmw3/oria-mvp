@@ -25,6 +25,7 @@ export function Avatar({ initials, size = 36, highlight = false, src }: AvatarPr
     );
   }
 
+  const noName = !initials || initials === "??";
   return (
     <div
       className="flex-shrink-0 flex items-center justify-center rounded-full font-bold select-none"
@@ -41,7 +42,23 @@ export function Avatar({ initials, size = 36, highlight = false, src }: AvatarPr
         boxShadow: highlight ? "0 4px 16px rgba(139,92,246,0.4)" : "none",
       }}
     >
-      {initials}
+      {noName ? (
+        <svg
+          width={size * 0.55}
+          height={size * 0.55}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ) : (
+        initials
+      )}
     </div>
   );
 }

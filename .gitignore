@@ -20,6 +20,8 @@ out/
 
 # Claude Code
 .claude/
+.claude-telegram-session
+.playwright-mcp/
 
 # Prisma
 prisma/migrations/

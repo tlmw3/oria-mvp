@@ -96,6 +96,12 @@ model Streak {
   monthAvgPace     Float @default(0) @map("month_avg_pace")
   /// Average pace last month (min/km), for progression comparison
   prevMonthAvgPace Float @default(0) @map("prev_month_avg_pace")
+  /// When set and in the future, weekly evaluation skips this user (vacation/injury freeze)
+  vacationUntil    DateTime? @map("vacation_until")
+  /// Composite activity score [0..1] for pool-based APY distribution
+  activityScore    Float    @default(0) @map("activity_score")
+  /// User's share of the redistribution pool (percentage points)
+  poolBonus        Float    @default(0) @map("pool_bonus")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -311,4 +317,13 @@ model ChallengeMember {
   /// One membership per user per challenge
   @@unique([challengeId, userId])
   @@map("challenge_members")
+}
+
+/// Key-value system config (e.g. cached Morpho vault APY, global meanScore).
+model SystemConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("system_config")
 }

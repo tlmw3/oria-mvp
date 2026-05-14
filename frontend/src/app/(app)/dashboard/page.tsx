@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Card } from "@/components/Card";
+import { PlanModal } from "@/components/PlanModal";
 import { Avatar } from "@/components/Avatar";
 import { QuickAction } from "@/components/QuickAction";
 import { ProgressRing } from "@/components/ProgressRing";
 import { CardSkeleton, ErrorCard } from "@/components/Skeleton";
-import { LogActivityModal } from "@/components/LogActivityModal";
 import { Celebration } from "@/components/Celebration";
 import { RunWelcome } from "@/components/RunWelcome";
 import {
@@ -17,7 +17,7 @@ import {
 } from "@/lib/hooks";
 import { ProgressChart } from "@/components/ProgressChart";
 import { useToast } from "@/components/Toast";
-import { timeAgo, getInitials, formatFeedEvent } from "@/lib/utils";
+import { timeAgo, getInitials, formatFeedEvent, formatMoney } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { data: user, isLoading: userLoading, isError: userError, refetch: refetchUser } = useUser();
@@ -31,10 +31,10 @@ export default function DashboardPage() {
   const { data: lastRunData } = useLastRun();
   const { toast } = useToast();
 
-  const [showLogModal, setShowLogModal] = useState(false);
   const [showSyncCelebration, setShowSyncCelebration] = useState(false);
   const [syncedKm, setSyncedKm] = useState(0);
   const [showRunWelcome, setShowRunWelcome] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const welcomeChecked = useRef(false);
   const autoSynced = useRef(false);
 
@@ -92,20 +92,46 @@ export default function DashboardPage() {
   const pct = Math.min(100, Math.round((currentKm / targetKm) * 100));
   const balance = (earnings?.totalDeposited ?? 0) + (earnings?.totalEarned ?? 0);
   const earned = earnings?.totalEarned ?? 0;
+  const currency = user?.settings?.currency ?? "USD";
+  const bal = formatMoney(balance, currency);
+  const earnedFmt = formatMoney(earned, currency);
+  const intWithCommas = bal.intPart;
+  const decPartRaw = bal.decPart;
 
-  const [intPart, decPartRaw] = balance.toFixed(2).split(".");
-  const intWithCommas = Number(intPart).toLocaleString();
 
+  const vacationUntil = streak?.vacationUntil ? new Date(streak.vacationUntil) : null;
+  const vacationActive = !!vacationUntil && vacationUntil > new Date();
+  const vacationDaysLeft = vacationUntil
+    ? Math.max(0, Math.ceil((vacationUntil.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : 0;
 
   return (
     <div className="flex flex-col gap-4">
+      {vacationActive && (
+        <Link
+          href="/settings"
+          className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-accent-sport/10 border border-accent-sport/25 cursor-pointer hover:bg-accent-sport/15 transition-colors"
+        >
+          <div className="w-2 h-2 rounded-full bg-accent-sport animate-pulse flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-bold text-accent-sport">Vacation mode active</p>
+            <p className="text-[11px] text-text-muted">
+              Streak frozen — {vacationDaysLeft} day{vacationDaysLeft === 1 ? "" : "s"} left
+            </p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FC4C02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </Link>
+      )}
+
       {/* Greeting + Balance Hero */}
       <section className="pt-2 pb-1">
         <p className="text-[13px] text-text-secondary font-medium">
           Hello, <span className="text-text-primary">{displayName}</span>
         </p>
         <div className="mt-3 flex items-baseline gap-1">
-          <span className="text-[15px] text-text-muted font-medium mr-1">$</span>
+          <span className="text-[15px] text-text-muted font-medium mr-1">{bal.symbol}</span>
           <span className="text-[48px] font-extrabold text-text-primary leading-none tracking-tight tabular-nums">
             {intWithCommas}
           </span>
@@ -113,7 +139,7 @@ export default function DashboardPage() {
         </div>
         <div className="mt-2 flex items-center gap-3 text-[13px]">
           <span className="text-success-500 font-semibold tabular-nums">
-            +${earned.toFixed(2)}
+            +{earnedFmt.symbol}{earnedFmt.intPart}.{earnedFmt.decPart}
           </span>
           <span className="text-text-muted">total earned</span>
           <Link href="/apy" className="ml-auto px-2.5 py-1 rounded-full bg-accent-purple/15 border border-accent-purple/25 text-accent-purple-bright text-[11px] font-semibold tabular-nums active:scale-95 transition-transform flex items-center gap-1">
@@ -126,14 +152,31 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <section className="grid grid-cols-4 gap-2 py-2">
         <QuickAction
-          label="Log run"
+          label={stravaSync.isPending ? "Syncing…" : "Sync"}
           tint="sport"
-          onClick={() => setShowLogModal(true)}
+          onClick={() => {
+            if (stravaSync.isPending) return;
+            if (!stravaStatus?.connected) {
+              toast("Connect Strava from your profile first", "error");
+              return;
+            }
+            stravaSync.mutate(undefined, {
+              onSuccess: (d) => {
+                if (d.synced > 0) {
+                  setSyncedKm(d.lastRun?.distanceKm ?? 0);
+                  setShowSyncCelebration(true);
+                } else {
+                  toast("Already up to date");
+                }
+              },
+              onError: () => toast("Sync failed", "error"),
+            });
+          }}
           icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="13" cy="4" r="2" />
-              <path d="M4 22l4-6 4 3 4-7 4 4" />
-              <path d="M11 14l-1-4 4-3 3 4" />
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={stravaSync.isPending ? "animate-spin" : ""}>
+              <path d="M1 4v6h6" />
+              <path d="M23 20v-6h-6" />
+              <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" />
             </svg>
           }
         />
@@ -162,7 +205,7 @@ export default function DashboardPage() {
         <QuickAction
           label="Stats"
           tint="neutral"
-          href="/challenges"
+          href="/stats"
           icon={
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 3v18h18" />
@@ -170,6 +213,47 @@ export default function DashboardPage() {
             </svg>
           }
         />
+      </section>
+
+      {/* Coming soon — explore */}
+      <section className="grid grid-cols-2 gap-2.5">
+        {[
+          {
+            label: "Événements",
+            description: "Run together with the community",
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+            ),
+          },
+          {
+            label: "Carte",
+            description: "Discover Oria runners near you",
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z" />
+                <path d="M8 2v16M16 6v16" />
+              </svg>
+            ),
+          },
+        ].map((item) => (
+          <button
+            key={item.label}
+            onClick={() => toast(`${item.label} — Coming soon`)}
+            className="relative text-left p-4 rounded-2xl bg-oria-card border border-oria backdrop-blur-[18px] shadow-card cursor-pointer hover:bg-oria-card-hover transition-colors group min-h-[88px]"
+          >
+            <span className="absolute top-2.5 right-2.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-accent-purple/20 text-accent-purple-bright border border-accent-purple/25">
+              Soon
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-accent-purple/15 border border-accent-purple/25 flex items-center justify-center text-accent-purple-bright mb-2">
+              {item.icon}
+            </div>
+            <p className="text-[13px] font-bold text-text-primary">{item.label}</p>
+            <p className="text-[11px] text-text-muted mt-0.5 leading-snug line-clamp-2">{item.description}</p>
+          </button>
+        ))}
       </section>
 
       {/* Streak Hero */}
@@ -192,7 +276,7 @@ export default function DashboardPage() {
                   : `${streakCount} week${streakCount > 1 ? "s" : ""} strong`}
               </p>
               <p className="text-[12px] text-text-secondary mt-0.5">
-                {streakCount >= 10
+                {streakCount >= 16
                   ? `Max base APY — ${effectiveApy > 8 ? `${effectiveApy.toFixed(2)}% with bonuses` : "8.00%"}`
                   : `${(8 - apy).toFixed(2)}% to unlock max base APY`}
               </p>
@@ -297,6 +381,12 @@ export default function DashboardPage() {
               </p>
               <p className="text-[11px] text-text-muted tabular-nums mt-0.5">
                 {Math.floor(lastRunData.lastRun.movingTimeSec / 60)} min
+                {lastRunData.lastRun.distanceKm > 0 && (() => {
+                  const paceMin = lastRunData.lastRun.movingTimeSec / 60 / lastRunData.lastRun.distanceKm;
+                  const m = Math.floor(paceMin);
+                  const s = Math.round((paceMin - m) * 60);
+                  return <> · <span className="text-text-secondary font-semibold">{m}:{String(s).padStart(2, "0")}</span><span className="text-text-muted"> /km</span></>;
+                })()}
               </p>
             </div>
           </div>
@@ -351,80 +441,44 @@ export default function DashboardPage() {
 
       {/* Coaching plan */}
       {(() => {
-        const sessionsPerWeek = Math.max(3, Math.min(5, Math.ceil(targetKm / 3)));
-        const longRunTarget = Math.round(targetKm * 0.4 * 10) / 10;
-        const nextMonthTarget = Math.round(targetKm * 1.1 * 10) / 10;
+        const goalType = user?.goalType ?? "running";
+        const isSteps = goalType === "steps";
+        const isCycling = goalType === "cycling";
+        const sessionWord = isSteps ? "day" : isCycling ? "ride" : "run";
+        const unitLabel = isSteps ? "k steps" : "km";
+        // Sessions/week: prefer the user's configured plan, fallback to runSchedule, then default.
+        const plan = user?.settings?.runPlan;
+        const scheduledDays = user?.runSchedule?.length ?? 0;
+        const sessionsPerWeek = plan?.sessionsPerWeek ?? (scheduledDays > 0
+          ? scheduledDays
+          : Math.max(3, Math.min(5, Math.ceil(targetKm / 3))));
+        const longRunKm = plan?.longRunKm ?? 0;
+        const progressionPct = user?.settings?.monthlyProgressionPct ?? 10;
+        const nextMonthTarget = Math.round(targetKm * (1 + progressionPct / 100) * 10) / 10;
         const weekSessions = streak?.weekSessions ?? 0;
-        const monthPace = streak?.monthAvgPace ?? 0;
-        const remainingKm = Math.max(0, targetKm - currentKm);
-        const daysLeft = 7 - new Date().getUTCDay() + (new Date().getUTCDay() === 0 ? 0 : 1);
-        const remainingSessions = Math.max(1, sessionsPerWeek - weekSessions);
-        const goalDone = currentKm >= targetKm;
 
         return (
           <>
-            {/* Next run CTA */}
-            <Card className={`!p-0 overflow-hidden ${goalDone ? "border-success-500/30" : ""}`}>
-              <div className={`px-5 py-4 ${goalDone ? "bg-success-500/8" : "bg-gradient-to-r from-accent-sport/8 to-transparent"}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                      {goalDone ? "Goal complete" : "Next run"}
-                    </p>
-                    <p className="text-[22px] font-extrabold text-text-primary mt-1 leading-none tabular-nums">
-                      {goalDone ? (
-                        <span className="text-success-500">Done</span>
-                      ) : (
-                        <>{(remainingKm / remainingSessions).toFixed(1)}<span className="text-[14px] text-text-muted font-semibold"> km</span></>
-                      )}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {!goalDone && (
-                      <>
-                        <p className="text-[13px] font-bold text-text-primary tabular-nums">
-                          {remainingSessions} run{remainingSessions > 1 ? "s" : ""} left
-                        </p>
-                        <p className="text-[11px] text-text-muted tabular-nums">
-                          {daysLeft}d remaining
-                        </p>
-                      </>
-                    )}
-                    {goalDone && (
-                      <div className="w-10 h-10 rounded-full bg-success-500/15 flex items-center justify-center">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Weekly plan + projection */}
+            {/* Weekly plan + projection — same-height grid */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Optimal split */}
-              <Card className="!p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-purple-bright">Plan</p>
+              {/* Plan — opens config modal */}
+              <button
+                onClick={() => setShowPlanModal(true)}
+                className="block text-left bg-oria-card rounded-xl border border-oria backdrop-blur-[18px] shadow-card hover:bg-oria-card-hover transition-colors cursor-pointer p-4 h-full flex flex-col"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-purple-bright">Plan</p>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64697A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </div>
                 <p className="text-[20px] font-extrabold text-text-primary mt-1 leading-none tabular-nums">
                   <span className="animate-count-pop inline-block">{weekSessions}</span>
                   <span className="text-[12px] text-text-muted font-semibold">/{sessionsPerWeek}</span>
                 </p>
-                <div className="mt-2 flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${(streak?.weekLongestRun ?? 0) >= longRunTarget ? "bg-success-500" : "bg-accent-sport"}`} />
-                    <span className={`text-[11px] ${(streak?.weekLongestRun ?? 0) >= longRunTarget ? "text-success-500 line-through" : "text-text-secondary"}`}>
-                      1 long: {longRunTarget} km
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${weekSessions >= sessionsPerWeek ? "bg-success-500" : "bg-accent-purple"}`} />
-                    <span className={`text-[11px] ${weekSessions >= sessionsPerWeek - 1 ? "text-success-500" : "text-text-secondary"}`}>
-                      {Math.max(0, sessionsPerWeek - 1 - Math.max(0, weekSessions - 1))} easy left
-                    </span>
-                  </div>
-                </div>
+                <p className="text-[11px] text-text-secondary mt-1.5">
+                  {sessionWord}{sessionsPerWeek > 1 ? "s" : ""} this week
+                </p>
                 <div className="mt-2 flex gap-1">
                   {Array.from({ length: sessionsPerWeek }).map((_, i) => (
                     <div
@@ -434,40 +488,48 @@ export default function DashboardPage() {
                     />
                   ))}
                 </div>
-              </Card>
+                <p className="text-[10px] text-text-muted mt-auto pt-2">
+                  {plan
+                    ? (longRunKm > 0 ? `1 long ${sessionWord}: ${longRunKm} ${unitLabel}` : "Tap to edit")
+                    : "Tap to configure"}
+                </p>
+              </button>
 
               {/* Next month projection */}
-              <Card className="!p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-gold">Next month</p>
-                <p className="text-[20px] font-extrabold text-text-primary mt-1 leading-none tabular-nums">
-                  {nextMonthTarget}<span className="text-[12px] text-text-muted font-semibold"> km/wk</span>
-                </p>
-                <p className="text-[11px] text-text-secondary mt-2">
-                  +10% progressive overload
-                </p>
-                {monthPace > 0 ? (
-                  <p className="text-[11px] text-text-muted mt-1 tabular-nums">
-                    Pace: {monthPace.toFixed(1)} min/km
+              <Link href="/settings" className="block h-full">
+                <Card className="!p-4 cursor-pointer hover:bg-oria-card-hover transition-colors h-full flex flex-col">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-gold">Next month</p>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64697A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                  <p className="text-[20px] font-extrabold text-text-primary mt-1 leading-none tabular-nums">
+                    {nextMonthTarget}<span className="text-[12px] text-text-muted font-semibold"> {unitLabel}/wk</span>
                   </p>
-                ) : (
-                  <p className="text-[11px] text-text-muted mt-1">
-                    Expect 5-8% pace gain
+                  <p className="text-[11px] text-text-secondary mt-1.5">
+                    {progressionPct === 0 ? "Maintenance" : `+${progressionPct}% overload`}
                   </p>
-                )}
-                <div className="mt-2 flex items-center gap-1">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                  </svg>
-                  <span className="text-[10px] text-text-muted">Buist et al. 2010</span>
-                </div>
-              </Card>
+                  <p className="text-[10px] text-text-muted mt-auto pt-2">Tap to change rate</p>
+                </Card>
+              </Link>
             </div>
           </>
         );
       })()}
 
-      {/* Log Activity Modal */}
-      <LogActivityModal open={showLogModal} onClose={() => setShowLogModal(false)} />
+      {/* Plan config modal */}
+      <PlanModal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        targetKm={targetKm}
+        goalType={user?.goalType ?? "running"}
+        initial={{
+          sessionsPerWeek: user?.settings?.runPlan?.sessionsPerWeek ?? Math.max(3, Math.min(5, Math.ceil(targetKm / 3))),
+          longRunKm: user?.settings?.runPlan?.longRunKm ?? 0,
+        }}
+        onSaved={() => refetchUser()}
+      />
 
       {/* Strava sync celebration */}
       <Celebration

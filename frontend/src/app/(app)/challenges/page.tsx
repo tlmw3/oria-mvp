@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, ErrorCard } from "@/components/Skeleton";
-import { useChallenges, useCreateChallenge, useJoinChallenge, useUser } from "@/lib/hooks";
+import { useChallenges, useCreateChallenge, useJoinChallenge, useDeleteChallenge, useUser } from "@/lib/hooks";
 import { getInitials, daysUntil } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 
@@ -13,9 +14,13 @@ export default function ChallengesPage() {
   const { data: user } = useUser();
   const createChallenge = useCreateChallenge();
   const joinChallenge = useJoinChallenge();
+  const deleteChallenge = useDeleteChallenge();
   const { toast } = useToast();
 
   const [showCreate, setShowCreate] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => setMounted(true), []);
   const [title, setTitle] = useState("");
   const [goalKm, setGoalKm] = useState("");
   const [duration, setDuration] = useState("4");
@@ -36,6 +41,14 @@ export default function ChallengesPage() {
   const otherChallenges = challenges?.filter(
     (c) => !user || !c.members.some((m) => m.userId === user.id),
   ) ?? [];
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredOtherChallenges = q
+    ? otherChallenges.filter((c) =>
+        c.title.toLowerCase().includes(q) ||
+        (c.description?.toLowerCase().includes(q) ?? false),
+      )
+    : otherChallenges;
 
   if (isLoading) {
     return (
@@ -77,7 +90,7 @@ export default function ChallengesPage() {
       </button>
 
       {/* Create Challenge bottom-sheet */}
-      {showCreate && (
+      {showCreate && mounted && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 backdrop-blur-sm"
           onClick={() => { setShowCreate(false); resetForm(); }}
@@ -193,7 +206,8 @@ export default function ChallengesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* My Challenges */}
@@ -217,12 +231,33 @@ export default function ChallengesPage() {
                       {c.goalKmWeek} km/week · {weeksLeft > 0 ? `${weeksLeft}w left` : "ended"}
                     </p>
                   </div>
-                  <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-success-100 border border-success-500/25 text-success-500 shrink-0 inline-flex items-center gap-1">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Joined
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-success-100 border border-success-500/25 text-success-500 inline-flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Joined
+                    </span>
+                    {user && c.creatorId === user.id && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete "${c.title}"? This can't be undone.`)) {
+                            deleteChallenge.mutate(c.id, {
+                              onSuccess: () => toast("Challenge deleted"),
+                              onError: () => toast("Failed to delete", "error"),
+                            });
+                          }
+                        }}
+                        aria-label="Delete challenge"
+                        className="w-7 h-7 rounded-full bg-oria-chip border border-oria flex items-center justify-center cursor-pointer hover:bg-error-100 hover:border-error-500/25 transition-colors group"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA0AC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-error-500 transition-colors">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {c.description && (
@@ -274,7 +309,36 @@ export default function ChallengesPage() {
           <p className="text-[13px] font-semibold text-text-secondary mt-2">
             {myChallenges.length > 0 ? "Discover" : "Active Challenges"}
           </p>
-          {otherChallenges.map((c) => {
+          <div className="relative">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64697A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search challenges…"
+              className="w-full pl-10 pr-10 py-3 rounded-2xl border border-oria bg-oria-section text-[14px] text-text-primary placeholder:text-text-muted focus:border-accent-purple outline-none"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-oria-chip border border-oria flex items-center justify-center cursor-pointer"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA0AC" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {filteredOtherChallenges.length === 0 && (
+            <p className="text-[13px] text-text-muted text-center py-6">
+              No challenges match &ldquo;{searchQuery}&rdquo;
+            </p>
+          )}
+          {filteredOtherChallenges.map((c) => {
             const memberCount = c._count.members;
             const ends = daysUntil(c.endDate);
             const avgProgress =

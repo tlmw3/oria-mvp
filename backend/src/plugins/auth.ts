@@ -1,7 +1,8 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { env } from "../config/env.js";
-import { MOCK_USER_ID, MOCK_PRIVY_ID } from "../config/constants.js";
+import { MOCK_USER_ID, MOCK_PRIVY_ID, AGENT_USER_ID, AGENT_PRIVY_ID } from "../config/constants.js";
+import { timingSafeEqual } from "node:crypto";
 import { UnauthorizedError } from "../lib/errors.js";
 import { computeApy } from "../modules/streaks/apy.utils.js";
 
@@ -25,6 +26,17 @@ export default fp(async (fastify: FastifyInstance) => {
     }
 
     const token = authHeader.slice(7);
+
+    if (env.DEV_AGENT_TOKEN && token.length === env.DEV_AGENT_TOKEN.length) {
+      const a = Buffer.from(token);
+      const b = Buffer.from(env.DEV_AGENT_TOKEN);
+      if (timingSafeEqual(a, b)) {
+        request.userId = AGENT_USER_ID;
+        request.privyId = AGENT_PRIVY_ID;
+        return;
+      }
+    }
+
     try {
       const { PrivyClient } = await import("@privy-io/server-auth");
       const privy = new PrivyClient(env.PRIVY_APP_ID, env.PRIVY_APP_SECRET);

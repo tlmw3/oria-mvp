@@ -83,15 +83,41 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setIsIosPwa((window.navigator as Navigator & { standalone?: boolean }).standalone === true);
   }, []);
 
+  // Dev-agent bypass: when localStorage.oria_dev_token is set, skip Privy and
+  // use the dev token as the bearer. Controlled server-side by DEV_AGENT_TOKEN.
+  const [devToken, setDevToken] = useState<string | null>(null);
+  const [devTokenChecked, setDevTokenChecked] = useState(false);
+  useEffect(() => {
+    setDevToken(localStorage.getItem("oria_dev_token"));
+    setDevTokenChecked(true);
+  }, []);
+  useEffect(() => {
+    if (devToken) setAuthTokenGetter(async () => devToken);
+  }, [devToken]);
+
   const inner = (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>{children}</ToastProvider>
     </QueryClientProvider>
   );
 
+  if (devToken) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider value={{ ready: true, authenticated: true, authVerified: true }}>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthContext.Provider>
+      </QueryClientProvider>
+    );
+  }
+
   if (!usePrivyAuth) {
     return inner;
   }
+
+  // Avoid mounting Privy until localStorage has been checked, so dev mode wins
+  // when set. (Prevents a Privy login flash before we discover the dev token.)
+  if (!devTokenChecked) return null;
 
   return (
     <PrivyProvider

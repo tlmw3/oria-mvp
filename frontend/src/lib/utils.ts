@@ -1,3 +1,22 @@
+// Static USD→EUR rate. Live rates would need a daily-cached fetch.
+export const EUR_PER_USD = 0.92;
+
+export type Currency = "USD" | "EUR";
+
+export function formatMoney(amountUsd: number, currency: Currency = "USD"): { symbol: string; intPart: string; decPart: string } {
+  const value = currency === "EUR" ? amountUsd * EUR_PER_USD : amountUsd;
+  const [intRaw, decRaw = "00"] = value.toFixed(2).split(".");
+  return {
+    symbol: currency === "EUR" ? "€" : "$",
+    intPart: Number(intRaw).toLocaleString(),
+    decPart: decRaw,
+  };
+}
+
+export function currencySymbol(currency: Currency = "USD"): string {
+  return currency === "EUR" ? "€" : "$";
+}
+
 export function timeAgo(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();

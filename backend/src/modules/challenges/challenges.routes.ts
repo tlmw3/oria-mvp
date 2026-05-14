@@ -5,6 +5,7 @@ import {
   listChallenges,
   joinChallenge,
   getChallengeDetails,
+  deleteChallenge,
 } from "./challenges.service.js";
 
 export default async function challengesRoutes(app: FastifyInstance) {
@@ -33,5 +34,11 @@ export default async function challengesRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const challenge = await getChallengeDetails(app.prisma, id);
     return reply.send(challenge);
+  });
+
+  app.delete("/challenges/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await deleteChallenge(app.prisma, request.userId, id);
+    return reply.send(result);
   });
 }

@@ -5,11 +5,17 @@ import { Card } from "@/components/Card";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useStreak, useUser, useActivities, useRecoverStreak } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
+import { formatMoney } from "@/lib/utils";
 
-const MILESTONES = [1, 3, 5, 10, 15, 20, 30, 52];
+const MILESTONES = [1, 2, 4, 6, 8, 12, 16, 24];
 
+const APY_TIERS: ReadonlyArray<readonly [number, number]> = [
+  [16, 8.0], [12, 7.5], [8, 7.0], [6, 6.5], [4, 6.0], [2, 5.5], [1, 5.0], [0, 4.0],
+];
 function computeApy(s: number) {
-  return 4 + 4 * Math.min(1, Math.log(1 + s) / Math.log(11));
+  if (s <= 0) return 4.0;
+  for (const [t, a] of APY_TIERS) if (s >= t) return a;
+  return 4.0;
 }
 
 export default function StreakDetailPage() {
@@ -159,7 +165,7 @@ export default function StreakDetailPage() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-text-primary">Recover your streak</p>
-              <p className="text-[12px] text-text-muted mt-0.5">Get back to {longest} weeks for $5</p>
+              <p className="text-[12px] text-text-muted mt-0.5">Get back to {longest} weeks for {(() => { const f = formatMoney(5, user?.settings?.currency ?? "USD"); return `${f.symbol}${f.intPart}`; })()}</p>
             </div>
             <button
               onClick={() => recoverStreak.mutate(undefined, {
@@ -169,7 +175,7 @@ export default function StreakDetailPage() {
               disabled={recoverStreak.isPending}
               className="px-4 py-2 rounded-xl gradient-gold text-white text-sm font-semibold cursor-pointer border-none disabled:opacity-50"
             >
-              {recoverStreak.isPending ? "..." : "$5"}
+              {recoverStreak.isPending ? "..." : (() => { const f = formatMoney(5, user?.settings?.currency ?? "USD"); return `${f.symbol}${f.intPart}`; })()}
             </button>
           </div>
         </Card>

@@ -5,7 +5,7 @@ import { Card } from "@/components/Card";
 import { QuickAction } from "@/components/QuickAction";
 import { CardSkeleton, ErrorCard } from "@/components/Skeleton";
 import { useEarnings, useWalletBalance, useDeposits, useUser } from "@/lib/hooks";
-import { AVAX_PRICE_USD } from "@/lib/mock-data";
+import { useMorphoPositions } from "@/lib/useMorphoPositions";
 import { ReceiveSheet } from "@/components/ReceiveSheet";
 import { InvestModal } from "@/components/InvestModal";
 import { WithdrawModal } from "@/components/WithdrawModal";
@@ -38,6 +38,7 @@ export default function WalletPage() {
   const { data: wallet } = useWalletBalance();
   const { data: deposits } = useDeposits();
   const { data: user } = useUser();
+  const { data: morpho, isLoading: morphoLoading, refetch: refetchMorpho } = useMorphoPositions(wallet?.walletAddr);
   const currency = user?.settings?.currency ?? "USD";
 
   const [showDeposit, setShowDeposit] = useState(false);
@@ -71,10 +72,18 @@ export default function WalletPage() {
     );
   }
 
-  const totalBalance = (earnings?.totalDeposited ?? 0) + (earnings?.totalEarned ?? 0);
+  // Real on-chain values from Morpho (idle USDC + invested in vaults)
+  // Fallback to backend earnings while on-chain reads are loading or unavailable
+  const invested = morpho?.invested ?? earnings?.totalDeposited ?? 0;
+  const idleTotal = morpho?.idleTotal ?? 0;
+  const totalBalance = morpho?.total ?? (invested + idleTotal);
   const earned = earnings?.totalEarned ?? 0;
-  const deposited = earnings?.totalDeposited ?? 0;
   const apy = earnings?.currentApy ?? 4.0;
+
+  // Weighted APY across all vault positions (only over invested portion)
+  const weightedApy = morpho && morpho.invested > 0
+    ? morpho.positions.reduce((sum, p) => sum + (p.apy ?? 0) * p.assets, 0) / morpho.invested
+    : null;
 
   const bal = formatMoney(totalBalance, currency);
   const earnedFmt = formatMoney(earned, currency);
@@ -171,31 +180,32 @@ export default function WalletPage() {
       <InvestModal open={showInvest} onClose={() => setShowInvest(false)} />
       <WithdrawModal open={showWithdraw} onClose={() => setShowWithdraw(false)} />
 
-      {/* Earning status */}
+      {/* Earning status — aggregated across all vaults */}
       <Card>
         <div className="flex justify-between items-center">
           <div>
             <p className="text-sm font-bold text-text-primary tracking-tight">Earning status</p>
-            <p className="text-[12px] text-text-muted mt-0.5">Steakhouse Prime USDC · Morpho on Base</p>
+            <p className="text-[12px] text-text-muted mt-0.5">Across Morpho vaults · live on-chain</p>
           </div>
           <div
             className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border ${
-              deposited > 0
+              invested > 0
                 ? "bg-success-100 text-success-500 border-success-500/25"
                 : "bg-oria-chip text-text-muted border-oria"
             }`}
           >
-            {deposited > 0 ? "Active" : "Inactive"}
+            {invested > 0 ? "Active" : "Inactive"}
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2.5 mt-5">
           {(() => {
-            const depFmt = formatMoney(deposited, currency);
+            const invFmt = formatMoney(invested, currency);
             const eFmt = formatMoney(earned, currency);
+            const apyValue = weightedApy !== null ? weightedApy : apy;
             return [
-              { label: "Deposited", value: `${depFmt.symbol}${depFmt.intPart}`,          color: "text-text-primary" },
-              { label: "Earned",    value: `${eFmt.symbol}${eFmt.intPart}.${eFmt.decPart}`, color: "text-success-500" },
-              { label: "APY",       value: `${apy.toFixed(2)}%`,                          color: "text-accent-purple-bright" },
+              { label: "Invested", value: `${invFmt.symbol}${invFmt.intPart}.${invFmt.decPart}`, color: "text-text-primary" },
+              { label: "Earned",   value: `${eFmt.symbol}${eFmt.intPart}.${eFmt.decPart}`,        color: "text-success-500" },
+              { label: "Avg APY",  value: `${apyValue.toFixed(2)}%`,                              color: "text-accent-purple-bright" },
             ];
           })().map((s) => (
             <div key={s.label} className="text-center py-3 rounded-xl bg-oria-section border border-oria">
@@ -205,6 +215,67 @@ export default function WalletPage() {
           ))}
         </div>
       </Card>
+
+      {/* Positions per vault — live on-chain */}
+      {morpho && (morpho.positions.some(p => p.assets > 0) || morphoLoading) && (
+        <Card>
+          <div className="flex justify-between items-center mb-3">
+            <p className="text-sm font-bold text-text-primary tracking-tight">Your positions</p>
+            <button
+              onClick={() => refetchMorpho()}
+              aria-label="Refresh"
+              className="text-[11px] text-accent-purple-bright font-semibold cursor-pointer"
+            >
+              ↻ Refresh
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {morpho.positions.filter(p => p.assets > 0).length === 0 ? (
+              <p className="text-[12px] text-text-muted py-2 text-center">
+                {morphoLoading ? "Loading…" : "No positions yet. Tap Invest to start earning."}
+              </p>
+            ) : morpho.positions.filter(p => p.assets > 0).map((p) => {
+              const f = formatMoney(p.assets, currency);
+              return (
+                <div key={p.vault.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-oria-section border border-oria">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold text-text-primary truncate">{p.vault.name}</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">
+                      {p.vault.curator} · {p.vault.chainName} {p.apy !== null && `· ${p.apy.toFixed(2)}% APY`}
+                    </p>
+                  </div>
+                  <p className="text-[14px] font-extrabold text-text-primary tabular-nums ml-2">
+                    {f.symbol}{f.intPart}.{f.decPart}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Idle USDC per chain */}
+      {morpho && morpho.idle.some(c => c.usdc > 0) && (
+        <Card>
+          <p className="text-sm font-bold text-text-primary mb-3 tracking-tight">Idle USDC</p>
+          <div className="flex flex-col">
+            {morpho.idle.filter(c => c.usdc > 0).map((c) => {
+              const f = formatMoney(c.usdc, currency);
+              return (
+                <div key={c.chainKey} className="flex justify-between py-2.5 border-b border-oria last:border-b-0">
+                  <span className="text-sm text-text-secondary">USDC on {c.chainName}</span>
+                  <span className="text-sm font-bold text-text-primary tabular-nums">
+                    {f.symbol}{f.intPart}.{f.decPart}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-text-muted mt-3">
+            Not earning yield yet — tap Invest to deploy into a Morpho vault.
+          </p>
+        </Card>
+      )}
 
       {/* Transactions (grouped) */}
       <Card id="wallet-tx" className="!p-0 overflow-hidden">
@@ -264,62 +335,40 @@ export default function WalletPage() {
         )}
       </Card>
 
-      {/* On-chain balances */}
-      {wallet && (
-        <Card>
-          <p className="text-sm font-bold text-text-primary mb-3 tracking-tight">On-chain balances</p>
-          <div className="flex justify-between py-2.5 border-b border-oria">
-            <span className="text-sm text-text-secondary">USDC</span>
-            <span className="text-sm font-bold text-text-primary tabular-nums">
-              {wallet.balances.USDC.toLocaleString()}
+      {/* Wallet address — copy */}
+      {wallet?.walletAddr && (
+        <button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(wallet.walletAddr!);
+              setCopied(true);
+              toast("Address copied!");
+              setTimeout(() => setCopied(false), 2000);
+            } catch {
+              toast("Failed to copy", "error");
+            }
+          }}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-oria-card border border-oria cursor-pointer hover:bg-oria-card-hover transition-colors group"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Wallet</span>
+            <span className="text-[12px] text-text-secondary font-mono truncate">
+              {wallet.walletAddr.slice(0, 6)}…{wallet.walletAddr.slice(-4)}
             </span>
           </div>
-          <div className="flex justify-between py-2.5">
-            <span className="text-sm text-text-secondary">AVAX</span>
-            <span className="text-sm font-bold text-text-primary tabular-nums">
-              {wallet.balances.AVAX.toFixed(4)}
-              {(() => {
-                const f = formatMoney(wallet.balances.AVAX * AVAX_PRICE_USD, currency);
-                return (
-                  <span className="text-text-muted font-medium ml-1">
-                    ({f.symbol}{f.intPart}.{f.decPart})
-                  </span>
-                );
-              })()}
-            </span>
-          </div>
-          {wallet.walletAddr && (
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(wallet.walletAddr!);
-                  setCopied(true);
-                  toast("Address copied!");
-                  setTimeout(() => setCopied(false), 2000);
-                } catch {
-                  toast("Failed to copy", "error");
-                }
-              }}
-              className="mt-3 w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer hover:bg-white/[0.06] transition-colors group"
-            >
-              <span className="text-[12px] text-text-muted font-mono truncate mr-2">
-                {wallet.chain} · {wallet.walletAddr}
-              </span>
-              <span className="flex-shrink-0">
-                {copied ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64697A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-accent-purple-bright transition-colors">
-                    <rect x="9" y="9" width="13" height="13" rx="2" />
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                  </svg>
-                )}
-              </span>
-            </button>
-          )}
-        </Card>
+          <span className="flex-shrink-0">
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64697A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-accent-purple-bright transition-colors">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+              </svg>
+            )}
+          </span>
+        </button>
       )}
     </div>
   );

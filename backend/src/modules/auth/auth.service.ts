@@ -13,6 +13,19 @@ export async function verifyAndUpsertUser(
   });
 
   if (existing) {
+    // Backfill missing walletAddr / avatarUrl when the verify payload now carries them.
+    // Handles older accounts created before walletAddr was reliably captured at signup.
+    const patch: { walletAddr?: string; avatarUrl?: string } = {};
+    if (!existing.walletAddr && body.walletAddr) patch.walletAddr = body.walletAddr;
+    if (!existing.avatarUrl && body.avatarUrl) patch.avatarUrl = body.avatarUrl;
+    if (Object.keys(patch).length > 0) {
+      const updated = await prisma.user.update({
+        where: { privyId },
+        data: patch,
+        include: { streak: true },
+      });
+      return { user: updated, streak: updated.streak, isNew: false };
+    }
     return { user: existing, streak: existing.streak, isNew: false };
   }
 

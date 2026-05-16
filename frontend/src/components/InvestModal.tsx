@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useWallets } from "@privy-io/react-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/Toast";
-import { approveAndDeposit, getUsdcBalance } from "@/lib/morpho";
+import { approveAndDeposit, getUsdcBalance, fetchVaultApys, VAULTS, DEFAULT_VAULT, type Vault } from "@/lib/morpho";
 
 interface Props {
   open: boolean;
@@ -18,9 +18,11 @@ export function InvestModal({ open, onClose }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
+  const [vault, setVault] = useState<Vault>(DEFAULT_VAULT);
   const [amount, setAmount] = useState("");
   const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
   const [loadingBal, setLoadingBal] = useState(false);
+  const [apys, setApys] = useState<Record<string, number>>({});
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -31,14 +33,14 @@ export function InvestModal({ open, onClose }: Props) {
     if (!wallet?.address) return;
     setLoadingBal(true);
     try {
-      const bal = await getUsdcBalance(wallet.address);
+      const bal = await getUsdcBalance(vault, wallet.address);
       setUsdcBalance(bal);
     } catch {
       setUsdcBalance(0);
     } finally {
       setLoadingBal(false);
     }
-  }, [wallet?.address]);
+  }, [wallet?.address, vault]);
 
   useEffect(() => {
     if (open) {
@@ -46,6 +48,7 @@ export function InvestModal({ open, onClose }: Props) {
       setStatus("");
       setTxHash(null);
       loadBalance();
+      fetchVaultApys().then(setApys).catch(() => {});
     }
   }, [open, loadBalance]);
 
@@ -53,21 +56,18 @@ export function InvestModal({ open, onClose }: Props) {
 
   const numAmount = parseFloat(amount || "0");
   const valid = numAmount > 0 && usdcBalance !== null && numAmount <= usdcBalance;
-  const explorerUrl = txHash ? `https://basescan.org/tx/${txHash}` : null;
+  const explorerUrl = txHash ? `${vault.explorerUrl}/${txHash}` : null;
 
   const submit = async () => {
-    if (!wallet) {
-      toast("Wallet not connected", "error");
-      return;
-    }
+    if (!wallet) { toast("Wallet not connected", "error"); return; }
     if (!valid) return;
     setBusy(true);
-    setStatus("Switching to Base…");
+    setStatus(`Switching to ${vault.chainName}…`);
     try {
-      const result = await approveAndDeposit(wallet, numAmount, setStatus);
+      const result = await approveAndDeposit(vault, wallet, numAmount, setStatus);
       setTxHash(result.finalHash);
       setStatus("Success!");
-      toast(`Invested ${numAmount} USDC ✓`);
+      toast(`Invested ${numAmount} USDC in ${vault.name} ✓`);
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
       queryClient.invalidateQueries({ queryKey: ["morpho-position"] });
       setTimeout(() => onClose(), 1500);
@@ -87,7 +87,7 @@ export function InvestModal({ open, onClose }: Props) {
       onClick={() => !busy && onClose()}
     >
       <div
-        className="w-full max-w-[420px] bg-[#0F0F16] rounded-t-3xl border-t border-x border-oria p-6 sheet-in"
+        className="w-full max-w-[420px] bg-[#0F0F16] rounded-t-3xl border-t border-x border-oria p-6 sheet-in max-h-[92vh] overflow-y-auto"
         style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom, 16px))" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -106,12 +106,45 @@ export function InvestModal({ open, onClose }: Props) {
           </button>
         </div>
         <p className="text-[13px] text-text-muted mb-4 leading-relaxed">
-          Deposit USDC into Steakhouse Prime USDC on Base, via your Oria wallet.
+          Choisis le vault Morpho. Tu peux passer d&apos;un vault à l&apos;autre — chacun a son propre rendement et chaîne.
         </p>
 
-        {/* USDC balance */}
+        {/* Vault picker */}
+        <div className="flex flex-col gap-2 mb-4">
+          {VAULTS.map((v) => {
+            const active = v.id === vault.id;
+            const apy = apys[v.id];
+            return (
+              <button
+                key={v.id}
+                onClick={() => !busy && setVault(v)}
+                disabled={busy}
+                className={`flex items-center justify-between text-left px-3 py-3 rounded-2xl border transition-all cursor-pointer disabled:opacity-50 ${
+                  active
+                    ? "border-accent-purple bg-accent-purple/10 ring-1 ring-accent-purple/40"
+                    : "border-oria bg-oria-section hover:bg-oria-elevated"
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-bold text-text-primary truncate">{v.name}</p>
+                  <p className="text-[10px] text-text-muted mt-0.5">
+                    {v.curator} · {v.chainName}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0 ml-2">
+                  <p className={`text-[14px] font-extrabold tabular-nums ${active ? "text-accent-purple-bright" : "text-text-primary"}`}>
+                    {apy !== undefined ? `${apy.toFixed(2)}%` : "…"}
+                  </p>
+                  <p className="text-[9px] text-text-muted">APY</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* USDC balance on selected chain */}
         <div className="flex items-center justify-between mb-2 px-3 py-2.5 rounded-xl bg-oria-section border border-oria">
-          <span className="text-[12px] text-text-muted">USDC on Base</span>
+          <span className="text-[12px] text-text-muted">USDC on {vault.chainName}</span>
           <button
             onClick={() => usdcBalance != null && setAmount(usdcBalance.toString())}
             className="text-[14px] font-bold text-text-primary tabular-nums cursor-pointer hover:text-accent-purple-bright"
@@ -119,7 +152,7 @@ export function InvestModal({ open, onClose }: Props) {
             {loadingBal ? "…" : usdcBalance?.toFixed(2) ?? "—"}
           </button>
         </div>
-        <p className="text-[10px] text-text-muted mb-4 text-center">Tap balance to use max</p>
+        <p className="text-[10px] text-text-muted mb-3 text-center">Tap balance to use max</p>
 
         {/* Amount input */}
         <label className="text-[12px] font-medium text-text-secondary mb-1.5 block">Amount</label>
@@ -137,7 +170,6 @@ export function InvestModal({ open, onClose }: Props) {
           />
         </div>
 
-        {/* Status */}
         {status && (
           <div className={`mb-4 p-3 rounded-xl border text-[12px] ${
             status.toLowerCase().includes("success") ? "bg-success-100 border-success-500/25 text-success-500" :
@@ -146,9 +178,7 @@ export function InvestModal({ open, onClose }: Props) {
           }`}>
             {busy && <span className="inline-block w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin mr-2 align-middle" />}
             {status}
-            {explorerUrl && (
-              <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="ml-2 underline">view tx</a>
-            )}
+            {explorerUrl && <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="ml-2 underline">view tx</a>}
           </div>
         )}
 

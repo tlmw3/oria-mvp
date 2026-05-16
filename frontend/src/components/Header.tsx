@@ -181,7 +181,7 @@ export function Header() {
           )}
         </div>
         <Link href="/profile" aria-label="Profile" className="ml-1">
-          <Avatar initials={initials} size={36} highlight />
+          <Avatar initials={initials} size={36} highlight src={user?.avatarUrl ?? null} />
         </Link>
       </div>
     </header>

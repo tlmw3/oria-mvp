@@ -31,6 +31,7 @@ function PodiumRow({
   apy,
   isMe,
   initials,
+  avatarUrl,
 }: {
   rank: number;
   name: string;
@@ -38,6 +39,7 @@ function PodiumRow({
   apy: number;
   isMe: boolean;
   initials: string;
+  avatarUrl?: string | null;
 }) {
   const medalFill = rank === 1 ? "#F59E0B" : rank === 2 ? "#94A3B8" : rank === 3 ? "#CD7F32" : null;
   return (
@@ -55,7 +57,7 @@ function PodiumRow({
       ) : (
         <span className="text-[13px] font-bold w-6 text-center tabular-nums text-text-muted">#{rank}</span>
       )}
-      <Avatar initials={initials} size={34} highlight={isMe} />
+      <Avatar initials={initials} size={34} highlight={isMe} src={avatarUrl ?? null} />
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-semibold text-text-primary truncate">
           {name}{" "}
@@ -248,7 +250,7 @@ export default function SocialPage() {
                 const status = getStatus(u.id);
                 return (
                   <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-oria-chip transition-colors">
-                    <Avatar initials={getInitials(u.displayName ?? "?")} size={38} />
+                    <Avatar initials={getInitials(u.displayName ?? "?")} size={38} src={u.avatarUrl} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-text-primary truncate">{u.displayName ?? "User"}</p>
                       <p className="text-[11px] text-text-muted tabular-nums">
@@ -288,7 +290,7 @@ export default function SocialPage() {
               <div className="flex flex-col gap-1">
                 {pendingRequests!.map((r) => (
                   <div key={r.friendshipId} className="flex items-center gap-3 p-2.5 rounded-xl bg-accent-purple/5 border border-accent-purple/10">
-                    <Avatar initials={getInitials(r.user.displayName ?? "?")} size={36} />
+                    <Avatar initials={getInitials(r.user.displayName ?? "?")} size={36} src={r.user.avatarUrl} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold text-text-primary truncate">{r.user.displayName ?? "User"}</p>
                       <p className="text-[11px] text-text-muted tabular-nums">
@@ -347,7 +349,7 @@ export default function SocialPage() {
                 <div className="flex flex-col gap-1">
                   {sentRequests!.map((r) => (
                     <div key={r.friendshipId} className="flex items-center gap-3 p-2 rounded-xl">
-                      <Avatar initials={getInitials(r.user.displayName ?? "?")} size={32} />
+                      <Avatar initials={getInitials(r.user.displayName ?? "?")} size={32} src={r.user.avatarUrl} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] font-semibold text-text-primary truncate">{r.user.displayName ?? "User"}</p>
                         <p className="text-[10px] text-text-muted">Pending</p>
@@ -385,6 +387,7 @@ export default function SocialPage() {
                     apy={p.apy}
                     isMe={p.isMe}
                     initials={getInitials(p.displayName)}
+                    avatarUrl={p.avatarUrl}
                   />
                 ))}
               </div>
@@ -413,7 +416,7 @@ export default function SocialPage() {
                 {friends!.map((f) => (
                   <div key={f.friendshipId} className="flex items-center gap-3 p-2.5 rounded-xl">
                     <Link href={`/friend/${f.user.id}`} className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer active:opacity-70 transition-opacity">
-                      <Avatar initials={getInitials(f.user.displayName ?? "?")} size={36} />
+                      <Avatar initials={getInitials(f.user.displayName ?? "?")} size={36} src={f.user.avatarUrl} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold text-text-primary truncate">{f.user.displayName ?? "User"}</p>
                         <p className="text-[11px] text-text-muted tabular-nums">
@@ -469,7 +472,7 @@ export default function SocialPage() {
                   const status = getStatus(u.id);
                   return (
                     <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-oria-chip transition-colors">
-                      <Avatar initials={getInitials(u.displayName ?? "?")} size={36} />
+                      <Avatar initials={getInitials(u.displayName ?? "?")} size={36} src={u.avatarUrl} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold text-text-primary truncate">{u.displayName ?? "User"}</p>
                         <p className="text-[11px] text-text-muted tabular-nums">
@@ -498,7 +501,7 @@ export default function SocialPage() {
                 const { text, emoji } = formatFeedEvent(f.eventType, f.payload as Record<string, unknown>);
                 return (
                   <div key={f.id} className={`flex gap-3 py-3 ${i < feed.length - 1 ? "border-b border-oria" : ""}`}>
-                    <Avatar initials={getInitials(f.user.displayName)} size={36} />
+                    <Avatar initials={getInitials(f.user.displayName)} size={36} src={f.user.avatarUrl} />
                     <div className="flex-1">
                       <p className="text-[13px] text-text-primary leading-snug">
                         <span className="font-semibold">{f.user.displayName ?? "User"}</span>{" "}

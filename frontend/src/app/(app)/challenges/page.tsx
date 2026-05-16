@@ -283,7 +283,7 @@ export default function ChallengesPage() {
                   <div className="flex">
                     {c.members.slice(0, 4).map((m, i) => (
                       <div key={m.id} style={{ marginLeft: i > 0 ? -8 : 0, zIndex: 4 - i }}>
-                        <Avatar initials={getInitials(m.user.displayName)} size={28} />
+                        <Avatar initials={getInitials(m.user.displayName)} size={28} src={m.user.avatarUrl} />
                       </div>
                     ))}
                     {memberCount > 4 && (
@@ -375,7 +375,7 @@ export default function ChallengesPage() {
                   <div className="flex">
                     {c.members.slice(0, 4).map((m, i) => (
                       <div key={m.id} style={{ marginLeft: i > 0 ? -8 : 0, zIndex: 4 - i }}>
-                        <Avatar initials={getInitials(m.user.displayName)} size={28} />
+                        <Avatar initials={getInitials(m.user.displayName)} size={28} src={m.user.avatarUrl} />
                       </div>
                     ))}
                     {memberCount > 4 && (

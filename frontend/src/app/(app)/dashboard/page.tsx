@@ -410,7 +410,7 @@ export default function DashboardPage() {
               return (
                 <div key={f.id} className={`rounded-xl ${f.isMe ? "bg-accent-purple/8 border border-accent-purple/15 p-2.5" : "p-0.5"}`}>
                   <div className="flex items-center gap-2.5">
-                    <Avatar initials={getInitials(f.displayName)} size={28} highlight={f.isMe} />
+                    <Avatar initials={getInitials(f.displayName)} size={28} highlight={f.isMe} src={f.avatarUrl} />
                     <span className="text-[13px] font-semibold text-text-primary flex-1 truncate">
                       {f.isMe ? "You" : (f.displayName ?? "User")}
                     </span>
@@ -563,7 +563,7 @@ export default function DashboardPage() {
             const { text, emoji } = formatFeedEvent(f.eventType, f.payload as Record<string, unknown>);
             return (
               <div key={f.id} className={`flex items-center gap-3 py-2.5 ${i < feed.length - 1 ? "border-b border-oria" : ""}`}>
-                <Avatar initials={getInitials(f.user.displayName)} size={32} />
+                <Avatar initials={getInitials(f.user.displayName)} size={32} src={f.user.avatarUrl} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] text-text-primary leading-snug">
                     <span className="font-semibold">{f.user.displayName ?? "User"}</span>{" "}

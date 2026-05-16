@@ -104,7 +104,7 @@ export default function FriendProfilePage() {
       {/* Avatar + Name + Goal */}
       <div className="flex flex-col items-center py-4">
         <div className="mb-3">
-          <Avatar initials={getInitials(profile.displayName)} size={84} highlight />
+          <Avatar initials={getInitials(profile.displayName)} size={84} highlight src={profile.avatarUrl ?? null} />
         </div>
         <p className="text-lg font-bold text-text-primary">
           {profile.displayName || "Anonymous"}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PlanModal } from "@/components/PlanModal";
+import { ReferFriendsModal } from "@/components/ReferFriendsModal";
 import { Avatar } from "@/components/Avatar";
 import { QuickAction } from "@/components/QuickAction";
 import { ProgressRing } from "@/components/ProgressRing";
@@ -35,6 +36,7 @@ export default function DashboardPage() {
   const [syncedKm, setSyncedKm] = useState(0);
   const [showRunWelcome, setShowRunWelcome] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showReferModal, setShowReferModal] = useState(false);
   const welcomeChecked = useRef(false);
   const autoSynced = useRef(false);
 
@@ -193,7 +195,7 @@ export default function DashboardPage() {
         <QuickAction
           label="Invite"
           tint="purple"
-          href="/social"
+          onClick={() => setShowReferModal(true)}
           icon={
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
@@ -529,6 +531,14 @@ export default function DashboardPage() {
           longRunKm: user?.settings?.runPlan?.longRunKm ?? 0,
         }}
         onSaved={() => refetchUser()}
+      />
+
+      {/* Refer friends modal */}
+      <ReferFriendsModal
+        open={showReferModal}
+        onClose={() => setShowReferModal(false)}
+        userId={user?.id}
+        displayName={user?.displayName}
       />
 
       {/* Strava sync celebration */}

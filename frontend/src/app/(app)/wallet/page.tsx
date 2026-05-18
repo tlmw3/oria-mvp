@@ -78,12 +78,8 @@ export default function WalletPage() {
   const idleTotal = morpho?.idleTotal ?? 0;
   const totalBalance = morpho?.total ?? (invested + idleTotal);
   const earned = earnings?.totalEarned ?? 0;
+  // Backend returns effectiveApy (baseline + pool bonus) — the same value shown on Home and Friends.
   const apy = earnings?.currentApy ?? 4.0;
-
-  // Weighted APY across all vault positions (only over invested portion)
-  const weightedApy = morpho && morpho.invested > 0
-    ? morpho.positions.reduce((sum, p) => sum + (p.apy ?? 0) * p.assets, 0) / morpho.invested
-    : null;
 
   const bal = formatMoney(totalBalance, currency);
   const earnedFmt = formatMoney(earned, currency);
@@ -201,11 +197,10 @@ export default function WalletPage() {
           {(() => {
             const invFmt = formatMoney(invested, currency);
             const eFmt = formatMoney(earned, currency);
-            const apyValue = weightedApy !== null ? weightedApy : apy;
             return [
               { label: "Invested", value: `${invFmt.symbol}${invFmt.intPart}.${invFmt.decPart}`, color: "text-text-primary" },
               { label: "Earned",   value: `${eFmt.symbol}${eFmt.intPart}.${eFmt.decPart}`,        color: "text-success-500" },
-              { label: "Avg APY",  value: `${apyValue.toFixed(2)}%`,                              color: "text-accent-purple-bright" },
+              { label: "Your APY", value: `${apy.toFixed(2)}%`,                                   color: "text-accent-purple-bright" },
             ];
           })().map((s) => (
             <div key={s.label} className="text-center py-3 rounded-xl bg-oria-section border border-oria">

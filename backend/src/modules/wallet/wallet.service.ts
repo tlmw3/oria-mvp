@@ -98,7 +98,8 @@ export async function getEarnings(
   ]);
 
   const totalDeposited = deposits.reduce((sum: number, d: typeof deposits[0]) => sum + d.amount, 0);
-  const apy = streak?.currentApy ?? 4.0;
+  // Use effectiveApy (baseline + pool bonus) — same value displayed everywhere across the app.
+  const apy = streak?.effectiveApy ?? streak?.currentApy ?? 4.0;
 
   // Simple projected yield calculation
   const annualYield = totalDeposited * (apy / 100);

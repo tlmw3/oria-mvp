@@ -620,7 +620,7 @@ export async function getLeaderboard(
     displayName: u.displayName,
     avatarUrl: u.avatarUrl,
     streak: u.streak?.currentCount ?? 0,
-    apy: u.streak?.currentApy ?? 4.0,
+    apy: u.streak?.effectiveApy ?? u.streak?.currentApy ?? 4.0,
     isMe: u.id === userId,
   }));
 }

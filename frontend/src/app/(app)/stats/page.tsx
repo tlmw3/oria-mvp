@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/Card";
 import { CardSkeleton } from "@/components/Skeleton";
-import { useActivities, useStravaStatus } from "@/lib/hooks";
+import { useActivities, useStravaStatus, useStreak } from "@/lib/hooks";
 import { lastNWeeks, lastNMonths } from "@/lib/utils";
 
 const WEEKS_WINDOW = 4;
@@ -147,6 +147,7 @@ export default function StatsPage() {
   const [period, setPeriod] = useState<Period>("weekly");
   const { data: activities, isLoading } = useActivities(52);
   const { data: stravaStatus } = useStravaStatus();
+  const { data: streak } = useStreak();
 
   const buckets = useMemo(
     () => (activities ? bucketize(activities, period) : []),
@@ -215,38 +216,64 @@ export default function StatsPage() {
         <Bars buckets={buckets} color="#FC4C02" activeOnly />
       </Card>
 
-      {/* Avg pace — placeholder until per-session data is available */}
-      <Card>
-        <div className="flex items-baseline justify-between mb-1">
-          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Avg pace</p>
-          <p className="text-[11px] text-text-muted">min / km</p>
-        </div>
-        <p className="text-[26px] font-extrabold text-text-muted tabular-nums tracking-tight">— : —</p>
-        <div className="mt-3 p-3 rounded-xl bg-accent-purple/8 border border-accent-purple/20 flex items-start gap-2.5">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v4l3 2" />
-          </svg>
-          <div className="min-w-0">
-            <p className="text-[12px] text-text-primary font-semibold leading-snug">
-              {stravaStatus?.connected ? "Pace data syncing soon" : "Connect Strava for pace data"}
-            </p>
-            <p className="text-[11px] text-text-muted mt-0.5 leading-relaxed">
-              {stravaStatus?.connected
-                ? "We'll display avg pace once per-session details are aggregated."
-                : "Manual weekly entries don't include pace. Connect Strava from your profile to track pace per run."}
-            </p>
-            {!stravaStatus?.connected && (
-              <Link
-                href="/profile"
-                className="inline-block mt-2 text-[12px] font-semibold text-accent-purple-bright underline underline-offset-2"
-              >
-                Open profile →
-              </Link>
+      {/* Avg pace — derived from Strava per-session moving time */}
+      {(() => {
+        const pace = streak?.monthAvgPace ?? 0;
+        const prevPace = streak?.prevMonthAvgPace ?? 0;
+        const hasPace = pace > 0;
+        const m = Math.floor(pace);
+        const s = Math.round((pace - m) * 60);
+        const delta = hasPace && prevPace > 0 ? pace - prevPace : null;
+        const improving = delta !== null && delta < 0;
+        return (
+          <Card>
+            <div className="flex items-baseline justify-between mb-1">
+              <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Avg pace</p>
+              <p className="text-[11px] text-text-muted">min / km · this month</p>
+            </div>
+            {hasPace ? (
+              <>
+                <p className="text-[26px] font-extrabold text-text-primary tabular-nums tracking-tight">
+                  {m}<span className="text-text-muted">:</span>{String(s).padStart(2, "0")}
+                </p>
+                {delta !== null && (
+                  <p className={`text-[11px] font-semibold tabular-nums mt-0.5 ${improving ? "text-success-500" : "text-warning-500"}`}>
+                    {improving ? "▼" : "▲"} {Math.abs(delta).toFixed(2)} min/km vs last month
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-[26px] font-extrabold text-text-muted tabular-nums tracking-tight">— : —</p>
+                <div className="mt-3 p-3 rounded-xl bg-accent-purple/8 border border-accent-purple/20 flex items-start gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v4l3 2" />
+                  </svg>
+                  <div className="min-w-0">
+                    <p className="text-[12px] text-text-primary font-semibold leading-snug">
+                      {stravaStatus?.connected ? "No runs this month yet" : "Connect Strava for pace data"}
+                    </p>
+                    <p className="text-[11px] text-text-muted mt-0.5 leading-relaxed">
+                      {stravaStatus?.connected
+                        ? "Pace is averaged from Strava sessions of the current month. Log a run via Strava to see it here."
+                        : "Manual logs only carry weekly km — no per-session time, so pace can't be computed. Connect Strava to track it."}
+                    </p>
+                    {!stravaStatus?.connected && (
+                      <Link
+                        href="/profile"
+                        className="inline-block mt-2 text-[12px] font-semibold text-accent-purple-bright underline underline-offset-2"
+                      >
+                        Open profile →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
-          </div>
-        </div>
-      </Card>
+          </Card>
+        );
+      })()}
     </div>
   );
 }

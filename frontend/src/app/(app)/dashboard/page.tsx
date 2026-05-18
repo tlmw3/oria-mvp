@@ -18,7 +18,7 @@ import {
 } from "@/lib/hooks";
 import { ProgressChart } from "@/components/ProgressChart";
 import { useToast } from "@/components/Toast";
-import { timeAgo, getInitials, formatFeedEvent, formatMoney } from "@/lib/utils";
+import { timeAgo, getInitials, formatFeedEvent, formatMoney, lastNWeeks } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { data: user, isLoading: userLoading, isError: userError, refetch: refetchUser } = useUser();
@@ -352,15 +352,20 @@ export default function DashboardPage() {
         </Link>
       </Card>
 
-      {/* Progress chart */}
-      {activities && activities.length >= 2 && (
-        <Card className="!p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-3">
-            Weekly progress
-          </p>
-          <ProgressChart data={activities} targetKm={targetKm} />
-        </Card>
-      )}
+      {/* Progress chart — last 8 consecutive weeks (0-km weeks included) */}
+      {activities && (() => {
+        const padded = lastNWeeks(activities, 8);
+        const hasAnyData = padded.some((w) => w.distanceKm > 0);
+        if (!hasAnyData) return null;
+        return (
+          <Card className="!p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-3">
+              Weekly progress
+            </p>
+            <ProgressChart data={padded} targetKm={targetKm} />
+          </Card>
+        );
+      })()}
 
       {/* Last run */}
       {lastRunData?.lastRun && (

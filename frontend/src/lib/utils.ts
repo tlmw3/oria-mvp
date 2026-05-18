@@ -68,3 +68,68 @@ export function daysUntil(dateStr: string): string {
   if (days <= 0) return "ended";
   return `${days} days`;
 }
+
+function getWeekStartUtc(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? 6 : day - 1;
+  d.setUTCDate(d.getUTCDate() - diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+/// Fill the last `n` ISO weeks using the supplied activities. Returned in the
+/// same order as the API's useActivities call: newest first. Missing weeks
+/// come back with distanceKm = 0 / goalMet = false so charts can show "the
+/// user did 0 km this week" instead of silently skipping the gap.
+export function lastNWeeks(
+  activities: { weekStart: string; distanceKm: number; goalMet?: boolean }[],
+  n: number,
+): { weekStart: string; distanceKm: number; goalMet: boolean }[] {
+  const currentWeek = getWeekStartUtc(new Date());
+  const byWeek = new Map<string, { distanceKm: number; goalMet: boolean }>();
+  for (const a of activities) {
+    const key = getWeekStartUtc(new Date(a.weekStart)).toISOString().slice(0, 10);
+    byWeek.set(key, { distanceKm: a.distanceKm, goalMet: a.goalMet ?? false });
+  }
+  const out: { weekStart: string; distanceKm: number; goalMet: boolean }[] = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(currentWeek);
+    d.setUTCDate(d.getUTCDate() - i * 7);
+    const key = d.toISOString().slice(0, 10);
+    const hit = byWeek.get(key);
+    out.push({
+      weekStart: d.toISOString(),
+      distanceKm: hit?.distanceKm ?? 0,
+      goalMet: hit?.goalMet ?? false,
+    });
+  }
+  return out;
+}
+
+/// Sum activities by calendar month and return the last `n` consecutive
+/// months, oldest first (so it slots directly into left-to-right charts).
+/// Missing months come back with 0 km.
+export function lastNMonths(
+  activities: { weekStart: string; distanceKm: number }[],
+  n: number,
+): { year: number; month: number; distanceKm: number }[] {
+  const byMonth = new Map<string, number>();
+  for (const a of activities) {
+    const d = new Date(a.weekStart);
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth()).padStart(2, "0")}`;
+    byMonth.set(key, (byMonth.get(key) ?? 0) + a.distanceKm);
+  }
+  const now = new Date();
+  const out: { year: number; month: number; distanceKm: number }[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth()).padStart(2, "0")}`;
+    out.push({
+      year: d.getUTCFullYear(),
+      month: d.getUTCMonth(),
+      distanceKm: byMonth.get(key) ?? 0,
+    });
+  }
+  return out;
+}

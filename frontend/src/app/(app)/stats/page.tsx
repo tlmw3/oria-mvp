@@ -5,6 +5,10 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useActivities, useStravaStatus } from "@/lib/hooks";
+import { lastNWeeks, lastNMonths } from "@/lib/utils";
+
+const WEEKS_WINDOW = 4;
+const MONTHS_WINDOW = 4;
 
 type Period = "weekly" | "monthly" | "all";
 
@@ -28,40 +32,29 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 function bucketize(activities: { weekStart: string; distanceKm: number }[], period: Period): Bucket[] {
   if (period === "weekly") {
-    const sorted = [...activities].sort((a, b) => a.weekStart.localeCompare(b.weekStart));
-    const last = sorted.slice(-12);
-    return last.map((a) => {
-      const d = new Date(a.weekStart);
-      const { week } = isoWeek(d);
+    // Always show the last N consecutive ISO weeks — including weeks the user
+    // didn't log anything (distanceKm = 0). Oldest first to match bar order.
+    const weeks = lastNWeeks(activities, WEEKS_WINDOW).slice().reverse();
+    return weeks.map((w) => {
+      const { week } = isoWeek(new Date(w.weekStart));
       return {
         label: `W${week}`,
         short: `W${week}`,
-        distanceKm: a.distanceKm,
-        active: a.distanceKm > 0,
+        distanceKm: w.distanceKm,
+        active: w.distanceKm > 0,
       };
     });
   }
 
   if (period === "monthly") {
-    const byMonth = new Map<string, { km: number; date: Date }>();
-    for (const a of activities) {
-      const d = new Date(a.weekStart);
-      const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
-      const prev = byMonth.get(key);
-      byMonth.set(key, {
-        km: (prev?.km ?? 0) + a.distanceKm,
-        date: prev?.date ?? new Date(d.getFullYear(), d.getMonth(), 1),
-      });
-    }
-    return Array.from(byMonth.values())
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .slice(-12)
-      .map((m) => ({
-        label: `${MONTHS[m.date.getMonth()]} ${String(m.date.getFullYear()).slice(2)}`,
-        short: MONTHS[m.date.getMonth()],
-        distanceKm: m.km,
-        active: m.km > 0,
-      }));
+    // Last N consecutive calendar months (oldest first), 0-km months kept.
+    const months = lastNMonths(activities, MONTHS_WINDOW);
+    return months.map((m) => ({
+      label: `${MONTHS[m.month]} ${String(m.year).slice(2)}`,
+      short: MONTHS[m.month],
+      distanceKm: m.distanceKm,
+      active: m.distanceKm > 0,
+    }));
   }
 
   // all-time: yearly aggregation

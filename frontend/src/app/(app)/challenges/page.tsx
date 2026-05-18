@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, ErrorCard } from "@/components/Skeleton";
@@ -223,7 +224,8 @@ export default function ChallengesPage() {
             const weeksLeft = Math.max(0, Math.ceil((new Date(c.endDate).getTime() - Date.now()) / (7 * 86400_000)));
 
             return (
-              <Card key={c.id} className="!p-4 !border-accent-purple/20">
+              <Link key={c.id} href={`/challenges/${c.id}`} className="block">
+                <Card className="!p-4 !border-accent-purple/20 cursor-pointer hover:bg-oria-card-hover transition-colors">
                 <div className="flex justify-between items-start mb-2 gap-3">
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-text-primary tracking-tight truncate">{c.title}</p>
@@ -240,7 +242,9 @@ export default function ChallengesPage() {
                     </span>
                     {user && c.creatorId === user.id && (
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           if (window.confirm(`Delete "${c.title}"? This can't be undone.`)) {
                             deleteChallenge.mutate(c.id, {
                               onSuccess: () => toast("Challenge deleted"),
@@ -297,7 +301,8 @@ export default function ChallengesPage() {
                   </div>
                   <span className="text-[11px] text-text-muted tabular-nums">{memberCount} member{memberCount !== 1 ? "s" : ""}</span>
                 </div>
-              </Card>
+                </Card>
+              </Link>
             );
           })}
         </>
@@ -347,7 +352,8 @@ export default function ChallengesPage() {
                 : 0;
 
             return (
-              <Card key={c.id} className="!p-4">
+              <Link key={c.id} href={`/challenges/${c.id}`} className="block">
+                <Card className="!p-4 cursor-pointer hover:bg-oria-card-hover transition-colors">
                 <div className="flex justify-between items-start mb-2 gap-3">
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-text-primary tracking-tight truncate">{c.title}</p>
@@ -388,19 +394,22 @@ export default function ChallengesPage() {
                     )}
                   </div>
                   <button
-                    onClick={() =>
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       joinChallenge.mutate(c.id, {
                         onSuccess: () => toast("Joined challenge!"),
                         onError: () => toast("Failed to join", "error"),
-                      })
-                    }
+                      });
+                    }}
                     disabled={joinChallenge.isPending}
                     className="text-[11px] font-semibold px-3.5 py-1.5 rounded-full gradient-brand text-white shadow-button min-h-[32px] disabled:opacity-50"
                   >
                     Join
                   </button>
                 </div>
-              </Card>
+                </Card>
+              </Link>
             );
           })}
         </>

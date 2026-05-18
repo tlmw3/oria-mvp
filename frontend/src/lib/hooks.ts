@@ -274,6 +274,41 @@ export function useChallenges() {
   });
 }
 
+export interface ChallengeDetail {
+  id: string;
+  creatorId: string;
+  title: string;
+  description: string | null;
+  goalKmWeek: number;
+  startDate: string;
+  endDate: string;
+  maxMembers: number | null;
+  status: string;
+  creator: { id: string; displayName: string | null };
+  weeks: string[];
+  elapsedWeeks: number;
+  members: Array<{
+    id: string;
+    userId: string;
+    joinedAt: string;
+    user: { id: string; displayName: string | null; avatarUrl: string | null };
+    weeksMet: number;
+    weeksElapsed: number;
+    weekly: Array<{ weekStart: string; distanceKm: number; goalMet: boolean; isPast: boolean }>;
+  }>;
+  weeklyParticipation: Array<{ weekStart: string; isPast: boolean; metCount: number; total: number; ratio: number }>;
+  aggregate: { totalWeeksMet: number; totalWeeksPossible: number; ratio: number };
+  milestones: Array<{ key: string; label: string; sub: string | null; achieved: boolean; at?: string | null }>;
+}
+
+export function useChallenge(id: string | undefined) {
+  return useQuery<ChallengeDetail>({
+    queryKey: ["challenges", id],
+    queryFn: () => apiFetch(`/api/challenges/${id}`),
+    enabled: !!id,
+  });
+}
+
 export function useWalletBalance() {
   return useQuery<WalletBalance>({
     queryKey: ["wallet", "balance"],

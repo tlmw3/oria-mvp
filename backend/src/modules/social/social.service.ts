@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { BadRequestError, NotFoundError } from "../../lib/errors.js";
 import { sendPushToUser } from "../push/push.service.js";
+import { getMyStreak } from "../streaks/streaks.service.js";
 
 interface UserSettings {
   notifRunReminders?: boolean;
@@ -614,13 +615,23 @@ export async function getLeaderboard(
     orderBy: { streak: { currentCount: "desc" } },
   });
 
-  return users.map((u: typeof users[0], i: number) => ({
-    rank: i + 1,
-    id: u.id,
-    displayName: u.displayName,
-    avatarUrl: u.avatarUrl,
-    streak: u.streak?.currentCount ?? 0,
-    apy: u.streak?.effectiveApy ?? u.streak?.currentApy ?? 4.0,
-    isMe: u.id === userId,
-  }));
+  // Live-recompute the current user's APY so it matches Home / APY details.
+  // Friends keep the persisted value (cheaper, refreshed on the weekly cron).
+  const myLive = await getMyStreak(prisma, userId).catch(() => null);
+
+  return users.map((u: typeof users[0], i: number) => {
+    const isMe = u.id === userId;
+    const apy = isMe
+      ? (myLive?.effectiveApy ?? myLive?.currentApy ?? u.streak?.effectiveApy ?? 4.0)
+      : (u.streak?.effectiveApy ?? u.streak?.currentApy ?? 4.0);
+    return {
+      rank: i + 1,
+      id: u.id,
+      displayName: u.displayName,
+      avatarUrl: u.avatarUrl,
+      streak: u.streak?.currentCount ?? 0,
+      apy,
+      isMe,
+    };
+  });
 }

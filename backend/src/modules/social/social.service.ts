@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { BadRequestError, NotFoundError } from "../../lib/errors.js";
 import { sendPushToUser } from "../push/push.service.js";
 import { getMyStreak } from "../streaks/streaks.service.js";
+import { APY } from "../../config/constants.js";
 
 interface UserSettings {
   notifRunReminders?: boolean;
@@ -622,8 +623,8 @@ export async function getLeaderboard(
   return users.map((u: typeof users[0], i: number) => {
     const isMe = u.id === userId;
     const apy = isMe
-      ? (myLive?.effectiveApy ?? myLive?.currentApy ?? u.streak?.effectiveApy ?? 4.0)
-      : (u.streak?.effectiveApy ?? u.streak?.currentApy ?? 4.0);
+      ? (myLive?.effectiveApy ?? myLive?.currentApy ?? u.streak?.effectiveApy ?? APY.BASELINE)
+      : (u.streak?.effectiveApy ?? u.streak?.currentApy ?? APY.BASELINE);
     return {
       rank: i + 1,
       id: u.id,

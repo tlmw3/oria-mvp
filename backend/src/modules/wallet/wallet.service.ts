@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { env } from "../../config/env.js";
 import { NotFoundError } from "../../lib/errors.js";
+import { APY } from "../../config/constants.js";
 import { getMyStreak } from "../streaks/streaks.service.js";
 
 // Mock wallet balances for MVP
@@ -101,7 +102,7 @@ export async function getEarnings(
   ]);
 
   const totalDeposited = deposits.reduce((sum: number, d: typeof deposits[0]) => sum + d.amount, 0);
-  const apy = streakLive?.effectiveApy ?? streakLive?.currentApy ?? 4.0;
+  const apy = streakLive?.effectiveApy ?? streakLive?.currentApy ?? APY.BASELINE;
 
   // Simple projected yield calculation
   const annualYield = totalDeposited * (apy / 100);

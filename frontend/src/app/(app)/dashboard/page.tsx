@@ -88,7 +88,7 @@ export default function DashboardPage() {
 
   const displayName = user?.displayName?.split(" ")[0] ?? "there";
   const streakCount = streak?.currentCount ?? 0;
-  const apy = streak?.currentApy ?? 4.0;
+  const apy = streak?.currentApy ?? 3.0;
   const effectiveApy = streak?.effectiveApy ?? apy;
   const targetKm = user?.targetKm ?? 10;
   const currentKm = streak?.currentWeek?.distanceKm ?? 0;

@@ -79,7 +79,7 @@ export default function WalletPage() {
   const totalBalance = morpho?.total ?? (invested + idleTotal);
   const earned = earnings?.totalEarned ?? 0;
   // Backend returns effectiveApy (baseline + pool bonus) — the same value shown on Home and Friends.
-  const apy = earnings?.currentApy ?? 4.0;
+  const apy = earnings?.currentApy ?? 3.0;
 
   const bal = formatMoney(totalBalance, currency);
   const earnedFmt = formatMoney(earned, currency);

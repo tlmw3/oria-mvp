@@ -183,6 +183,7 @@ export async function syncStravaActivities(
     : 0;
 
   // Upsert one activity record per week
+  let touchedCurrentWeek = false;
   for (const [weekKey, totalKm] of weekMap.entries()) {
     const weekStart = new Date(weekKey);
     const goalMet = totalKm >= user.targetKm;
@@ -191,6 +192,7 @@ export async function syncStravaActivities(
       update: { distanceKm: totalKm, source: "strava", goalMet },
       create: { userId, weekStart, distanceKm: totalKm, source: "strava", goalMet },
     });
+    if (weekStart.getTime() === currentWeekStart.getTime()) touchedCurrentWeek = true;
 
     // Update streak if current week's goal is met
     if (weekStart.getTime() === currentWeekStart.getTime() && goalMet) {
@@ -223,6 +225,19 @@ export async function syncStravaActivities(
       }
     }
   }
+
+  // Always refresh the current-week session counter + longest run so the
+  // dashboard "X/Y runs this week" tile updates before the weekly goal is hit.
+  // If the user did Strava activities outside the current week only, we still
+  // want to zero out the current week here (touchedCurrentWeek === false → 0).
+  await prisma.streak.update({
+    where: { userId },
+    data: {
+      weekSessions: touchedCurrentWeek ? weekSessions : 0,
+      weekLongestRun: touchedCurrentWeek ? weekLongestRun : 0,
+      monthAvgPace, prevMonthAvgPace,
+    },
+  }).catch(() => {});
 
   // Find the most recent individual activity for "last run" display
   const lastActivity = activities

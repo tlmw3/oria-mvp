@@ -69,6 +69,23 @@ export async function logActivity(
     },
   });
 
+  // Refresh live counters for the current week so the dashboard "X/Y this week"
+  // tile updates even before the weekly goal is met. Only the current ISO week
+  // contributes to weekSessions/weekLongestRun.
+  const isCurrentWeek = weekStart.getTime() === getWeekStart().getTime();
+  if (isCurrentWeek) {
+    const streak = await prisma.streak.findUnique({ where: { userId } });
+    if (streak) {
+      await prisma.streak.update({
+        where: { userId },
+        data: {
+          weekSessions: streak.weekSessions + 1,
+          weekLongestRun: Math.max(streak.weekLongestRun, body.distanceKm),
+        },
+      });
+    }
+  }
+
   // Update streak in real-time only when goal transitions to met for the first time this week
   if (goalMet && !wasGoalAlreadyMet) {
     const streak = await prisma.streak.findUnique({ where: { userId } });

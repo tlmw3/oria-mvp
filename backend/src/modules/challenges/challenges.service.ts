@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import type { CreateChallengeBody } from "./challenges.schemas.js";
+import type { CreateChallengeBody, UpdateChallengeBody } from "./challenges.schemas.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.js";
 
 function toWeekStart(date: Date): Date {
@@ -98,6 +98,26 @@ export async function joinChallenge(
 
   return prisma.challengeMember.create({
     data: { challengeId, userId },
+  });
+}
+
+export async function updateChallenge(
+  prisma: PrismaClient,
+  userId: string,
+  challengeId: string,
+  body: UpdateChallengeBody,
+) {
+  const challenge = await prisma.challenge.findUnique({
+    where: { id: challengeId },
+    select: { id: true, creatorId: true },
+  });
+  if (!challenge) throw new NotFoundError("Challenge");
+  if (challenge.creatorId !== userId) {
+    throw new ForbiddenError("Only the owner can edit this challenge");
+  }
+  return prisma.challenge.update({
+    where: { id: challengeId },
+    data: body,
   });
 }
 
@@ -252,6 +272,7 @@ export async function getChallengeDetails(
     creatorId: challenge.creatorId,
     title: challenge.title,
     description: challenge.description,
+    bannerUrl: challenge.bannerUrl,
     goalKmWeek: challenge.goalKmWeek,
     startDate: challenge.startDate,
     endDate: challenge.endDate,

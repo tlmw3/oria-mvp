@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/Card";
@@ -8,6 +9,7 @@ import { CardSkeleton, ErrorCard } from "@/components/Skeleton";
 import { useChallenge, useJoinChallenge, useUser, type ChallengeDetail } from "@/lib/hooks";
 import { getInitials } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
+import { EditChallengeModal } from "@/components/EditChallengeModal";
 
 function fmtWeek(iso: string) {
   const d = new Date(iso);
@@ -25,6 +27,7 @@ export default function ChallengeDetailPage() {
   const { data: user } = useUser();
   const joinChallenge = useJoinChallenge();
   const { toast } = useToast();
+  const [showEdit, setShowEdit] = useState(false);
 
   if (isLoading) {
     return (
@@ -58,6 +61,7 @@ export default function ChallengeDetailPage() {
   const c: ChallengeDetail = data;
   const isMember = !!user && c.members.some((m) => m.userId === user.id);
   const me = user ? c.members.find((m) => m.userId === user.id) : undefined;
+  const isOwner = !!user && c.creatorId === user.id;
 
   const weeksTotal = c.weeks.length;
   const totalRatio = c.aggregate.ratio;
@@ -81,7 +85,51 @@ export default function ChallengeDetailPage() {
             {c.goalKmWeek} km/week · {fmtDate(c.startDate)} → {fmtDate(c.endDate)}
           </p>
         </div>
+        {isOwner && (
+          <button
+            onClick={() => setShowEdit(true)}
+            aria-label="Edit challenge"
+            className="w-9 h-9 rounded-xl bg-oria-card border border-oria flex items-center justify-center cursor-pointer active:scale-95 transition-transform shrink-0"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+        )}
       </div>
+
+      {/* Banner */}
+      {c.bannerUrl && (
+        <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-oria">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={c.bannerUrl} alt={`${c.title} banner`} className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+          {isOwner && (
+            <button
+              onClick={() => setShowEdit(true)}
+              className="absolute top-2 right-2 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-semibold border border-white/15"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      )}
+      {!c.bannerUrl && isOwner && (
+        <button
+          onClick={() => setShowEdit(true)}
+          className="w-full h-20 rounded-2xl border border-dashed border-oria bg-oria-section text-text-muted text-[12px] font-medium flex items-center justify-center gap-2 cursor-pointer hover:bg-oria-card-hover transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          Add a banner
+        </button>
+      )}
+
+      <EditChallengeModal open={showEdit} onClose={() => setShowEdit(false)} challenge={c} />
 
       {/* Hero — collective consistency */}
       <Card className="relative overflow-hidden !p-5 text-center">
@@ -124,9 +172,17 @@ export default function ChallengeDetailPage() {
         </button>
       )}
 
-      {c.description && (
+      {(c.description || c.creator) && (
         <Card className="!p-4">
-          <p className="text-[12px] text-text-secondary leading-relaxed">{c.description}</p>
+          {c.description && (
+            <p className="text-[12px] text-text-secondary leading-relaxed whitespace-pre-wrap">{c.description}</p>
+          )}
+          {c.creator && (
+            <p className={`text-[11px] text-text-muted ${c.description ? "mt-3" : ""}`}>
+              Hosted by <span className="text-text-secondary font-semibold">{c.creator.displayName ?? "—"}</span>
+              {isOwner && <span className="text-accent-purple-bright"> · you</span>}
+            </p>
+          )}
         </Card>
       )}
 

@@ -279,6 +279,7 @@ export interface ChallengeDetail {
   creatorId: string;
   title: string;
   description: string | null;
+  bannerUrl: string | null;
   goalKmWeek: number;
   startDate: string;
   endDate: string;
@@ -645,6 +646,28 @@ export function useJoinChallenge() {
       apiFetch(`/api/challenges/${challengeId}/join`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["challenges"] });
+    },
+  });
+}
+
+export function useUpdateChallenge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: {
+      id: string;
+      title?: string;
+      description?: string | null;
+      bannerUrl?: string | null;
+      goalKmWeek?: number;
+      maxMembers?: number | null;
+    }) =>
+      apiFetch(`/api/challenges/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["challenges", vars.id] });
     },
   });
 }

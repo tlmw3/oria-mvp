@@ -273,12 +273,14 @@ model PushSubscription {
 /// get a temporary APY boost (future feature).
 model Challenge {
   id          String   @id @default(uuid())
-  /// User who created the challenge
+  /// User who created (and owns) the challenge — can edit the page and banner
   creatorId   String   @map("creator_id")
   /// Challenge display title (e.g., "Team 10K Week")
   title       String
   /// Optional description
   description String?
+  /// Owner-uploaded banner (base64 data URL, capped at 500 KB)
+  bannerUrl   String?  @map("banner_url")
   /// Weekly km goal for all participants
   goalKmWeek  Float    @map("goal_km_week")
   /// Challenge start date (ISO Monday)

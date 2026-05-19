@@ -140,7 +140,29 @@ export async function syncStravaActivities(
   let weekSessions = 0;
   let weekLongestRun = 0;
 
-  // Track pace data for this month and last month
+  // First pass — classify each Strava activity by category so we can pick the
+  // user's dominant discipline and only average paces within it (mixing a 5
+  // min/km run with a 2 min/km ride gives a meaningless number).
+  const categoryOf = (type: string): "running" | "cycling" | null => {
+    if (/(^|\b)(Run|TrailRun|VirtualRun)\b/i.test(type)) return "running";
+    if (/(^|\b)(Ride|VirtualRide|EBikeRide|GravelRide|MountainBikeRide|Handcycle|Velomobile)\b/i.test(type)) return "cycling";
+    return null;
+  };
+
+  const categoryCounts: Record<string, number> = { running: 0, cycling: 0 };
+  for (const act of activities) {
+    const cat = categoryOf(act.type);
+    if (cat) categoryCounts[cat] += 1;
+  }
+  const paceCategory: "running" | "cycling" | null =
+    categoryCounts.running === 0 && categoryCounts.cycling === 0
+      ? null
+      : categoryCounts.running >= categoryCounts.cycling
+        ? "running"
+        : "cycling";
+
+  // Track pace data for this month and last month — only for activities of the
+  // dominant category.
   const now = new Date();
   const thisMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
@@ -162,8 +184,9 @@ export async function syncStravaActivities(
       if (km > weekLongestRun) weekLongestRun = km;
     }
 
-    // Pace tracking (min/km) — only for runs with meaningful distance
-    if (km >= 1 && act.moving_time > 0) {
+    // Pace tracking (min/km) — only for activities matching the user's
+    // dominant category, with meaningful distance.
+    if (paceCategory && categoryOf(act.type) === paceCategory && km >= 1 && act.moving_time > 0) {
       const paceMinPerKm = (act.moving_time / 60) / km;
       if (date >= thisMonthStart) {
         thisMonthPaceSum += paceMinPerKm;
@@ -206,7 +229,7 @@ export async function syncStravaActivities(
           where: { userId },
           data: {
             currentCount: newCount, lastWeekMet: true, currentApy: baseApy,
-            weekSessions, weekLongestRun, monthAvgPace, prevMonthAvgPace,
+            weekSessions, weekLongestRun, monthAvgPace, prevMonthAvgPace, paceCategory,
             ...m,
           },
         });
@@ -218,7 +241,7 @@ export async function syncStravaActivities(
           where: { userId },
           data: {
             lastWeekMet: true, currentApy: baseApy,
-            weekSessions, weekLongestRun, monthAvgPace, prevMonthAvgPace,
+            weekSessions, weekLongestRun, monthAvgPace, prevMonthAvgPace, paceCategory,
             ...m,
           },
         });
@@ -235,7 +258,7 @@ export async function syncStravaActivities(
     data: {
       weekSessions: touchedCurrentWeek ? weekSessions : 0,
       weekLongestRun: touchedCurrentWeek ? weekLongestRun : 0,
-      monthAvgPace, prevMonthAvgPace,
+      monthAvgPace, prevMonthAvgPace, paceCategory,
     },
   }).catch(() => {});
 

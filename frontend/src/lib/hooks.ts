@@ -19,6 +19,7 @@ interface Streak {
   weekLongestRun: number;
   monthAvgPace: number;
   prevMonthAvgPace: number;
+  paceCategory: "running" | "cycling" | null;
   vacationUntil: string | null;
   activityScore: number;
   poolBonus: number;

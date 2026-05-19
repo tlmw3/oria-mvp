@@ -220,27 +220,38 @@ export default function StatsPage() {
       {(() => {
         const pace = streak?.monthAvgPace ?? 0;
         const prevPace = streak?.prevMonthAvgPace ?? 0;
+        const cat = streak?.paceCategory ?? null;
         const hasPace = pace > 0;
         const m = Math.floor(pace);
         const s = Math.round((pace - m) * 60);
         const delta = hasPace && prevPace > 0 ? pace - prevPace : null;
         const improving = delta !== null && delta < 0;
+        const catLabel = cat === "cycling" ? "cycling" : cat === "running" ? "running" : null;
         return (
           <Card>
             <div className="flex items-baseline justify-between mb-1">
               <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Avg pace</p>
-              <p className="text-[11px] text-text-muted">min / km · this month</p>
+              <p className="text-[11px] text-text-muted">
+                min / km{catLabel ? ` · ${catLabel} this month` : " · this month"}
+              </p>
             </div>
             {hasPace ? (
               <>
                 <p className="text-[26px] font-extrabold text-text-primary tabular-nums tracking-tight">
                   {m}<span className="text-text-muted">:</span>{String(s).padStart(2, "0")}
                 </p>
-                {delta !== null && (
-                  <p className={`text-[11px] font-semibold tabular-nums mt-0.5 ${improving ? "text-success-500" : "text-warning-500"}`}>
-                    {improving ? "▼" : "▲"} {Math.abs(delta).toFixed(2)} min/km vs last month
-                  </p>
-                )}
+                <div className="mt-0.5 flex items-baseline gap-2 flex-wrap">
+                  {delta !== null && (
+                    <span className={`text-[11px] font-semibold tabular-nums ${improving ? "text-success-500" : "text-warning-500"}`}>
+                      {improving ? "▼" : "▲"} {Math.abs(delta).toFixed(2)} min/km vs last month
+                    </span>
+                  )}
+                  {catLabel && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent-purple/15 border border-accent-purple/25 text-accent-purple-bright">
+                      {catLabel} only
+                    </span>
+                  )}
+                </div>
               </>
             ) : (
               <>
@@ -256,7 +267,7 @@ export default function StatsPage() {
                     </p>
                     <p className="text-[11px] text-text-muted mt-0.5 leading-relaxed">
                       {stravaStatus?.connected
-                        ? "Pace is averaged from Strava sessions of the current month. Log a run via Strava to see it here."
+                        ? "Pace is averaged from Strava sessions of your dominant discipline (running or cycling). Log one this month to see it here."
                         : "Manual logs only carry weekly km — no per-session time, so pace can't be computed. Connect Strava to track it."}
                     </p>
                     {!stravaStatus?.connected && (

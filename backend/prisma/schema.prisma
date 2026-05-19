@@ -92,10 +92,13 @@ model Streak {
   weekSessions     Int   @default(0) @map("week_sessions")
   /// Longest single run this week in km
   weekLongestRun   Float @default(0) @map("week_longest_run")
-  /// Average pace this month (min/km), 0 = no data
+  /// Average pace this month (min/km), 0 = no data. Limited to the user's
+  /// dominant Strava activity category so we don't average runs with rides.
   monthAvgPace     Float @default(0) @map("month_avg_pace")
   /// Average pace last month (min/km), for progression comparison
   prevMonthAvgPace Float @default(0) @map("prev_month_avg_pace")
+  /// Strava activity category that pace is computed against: "running" | "cycling" | null
+  paceCategory     String? @map("pace_category")
   /// When set and in the future, weekly evaluation skips this user (vacation/injury freeze)
   vacationUntil    DateTime? @map("vacation_until")
   /// Composite activity score [0..1] for pool-based APY distribution

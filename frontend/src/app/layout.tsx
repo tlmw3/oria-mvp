@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Oria - Gamified Crypto Savings",
+  title: "Oria - Save more. Move more. Earn more.",
   description: "Earn variable APY based on your fitness streak consistency",
   manifest: "/manifest.json",
   appleWebApp: {

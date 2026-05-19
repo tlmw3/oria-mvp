@@ -227,8 +227,11 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Illustrative APY curve for the pool model: a 3 % baseline that climbs
+  // toward ~8 % as the streak component of the activity score maxes out at
+  // 16 weeks. Numbers are representative, not a promise.
   const apyData = [
-    { s: 0, a: 4.0 }, { s: 2, a: 5.83 }, { s: 4, a: 6.72 }, { s: 6, a: 7.24 }, { s: 8, a: 7.62 }, { s: 10, a: 8.0 },
+    { s: 0, a: 3.0 }, { s: 4, a: 4.5 }, { s: 8, a: 5.8 }, { s: 12, a: 7.0 }, { s: 16, a: 8.0 },
   ];
 
   const days = ["M", "T", "W", "T", "F", "S", "S"];
@@ -461,7 +464,7 @@ export default function LandingPage() {
               label="Yield model"
               title="Your consistency,"
               highlight="rewarded"
-              desc="APY scales logarithmically with your streak count. Early consistency is rewarded the most."
+              desc="A 3% baseline is guaranteed for everyone. Your activity score — fed by your streak — grows your share of the bonus pool, with the streak component fully unlocked at 16 weeks."
             />
           </Reveal>
           <Reveal delay={150}>
@@ -475,7 +478,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
           <div className="text-center mt-5 text-xs" style={{ color: "rgba(196,181,253,0.4)" }}>
-            Streak-based APY tiers — powered by Morpho lending
+            Illustrative pool-based APY by streak length — powered by Morpho lending
           </div>
         </div>
       </section>

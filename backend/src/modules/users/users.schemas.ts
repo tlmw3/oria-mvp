@@ -2,7 +2,9 @@ import { z } from "zod";
 
 export const updateUserSchema = z.object({
   displayName: z.string().min(1).max(50).optional(),
-  avatarUrl: z.string().max(500_000).nullable().optional(),
+  // base64 data URLs are ~33% larger than the raw bytes, so allow up to 700 KB
+  // of string for the ~500 KB raw image cap enforced client-side.
+  avatarUrl: z.string().max(700_000).nullable().optional(),
   goalType: z.enum(["running", "cycling", "steps"]).optional(),
   targetKm: z.number().min(1).max(200).optional(),
   runSchedule: z.array(z.number().int().min(0).max(6)).max(7).optional(),

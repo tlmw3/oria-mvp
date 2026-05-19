@@ -53,8 +53,10 @@ export default function ProfilePage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 400_000) {
-      toast("Image too large (max 400 KB)", "error");
+    // Raw bytes; base64 string is ~33% larger and must stay under the 700K
+    // char backend cap, so 500 KB raw is the safe headroom.
+    if (file.size > 500_000) {
+      toast("Image too large (max 500 KB)", "error");
       return;
     }
     const reader = new FileReader();
@@ -83,8 +85,11 @@ export default function ProfilePage() {
       });
       await refetch();
       toast("Profile updated!");
-    } catch {
-      toast("Failed to save changes", "error");
+    } catch (e) {
+      const msg = e instanceof Error && e.message && !e.message.startsWith("API error")
+        ? e.message
+        : "Failed to save changes";
+      toast(msg, "error");
     } finally {
       setSaving(false);
     }

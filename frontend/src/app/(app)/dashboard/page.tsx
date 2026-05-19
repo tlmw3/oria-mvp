@@ -222,7 +222,7 @@ export default function DashboardPage() {
       <section className="grid grid-cols-2 gap-2.5">
         {[
           {
-            label: "Événements",
+            label: "Events",
             description: "Run together with the community",
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -232,7 +232,7 @@ export default function DashboardPage() {
             ),
           },
           {
-            label: "Carte",
+            label: "Map",
             description: "Discover Oria runners near you",
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

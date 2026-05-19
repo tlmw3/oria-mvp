@@ -117,9 +117,9 @@ function FeatureCard({
   delay?: number;
 }) {
   return (
-    <Reveal delay={delay}>
+    <Reveal delay={delay} className="h-full">
       <div
-        className="rounded-2xl p-7 cursor-default group transition-all duration-300 hover:-translate-y-1"
+        className="rounded-2xl p-7 cursor-default group transition-all duration-300 hover:-translate-y-1 h-full flex flex-col"
         style={{
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(167,139,250,0.15)",
@@ -453,7 +453,7 @@ export default function LandingPage() {
           <Reveal>
             <SectionHead label="Features" title="Savings that" highlight="move with you" />
           </Reveal>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(270px,1fr))] gap-4">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(270px,1fr))] auto-rows-[1fr] gap-4">
             <FeatureCard icon={<LockIcon />} title="Embedded wallets" desc="Sign in with email, Google or Apple via Privy. A non-custodial wallet is created instantly — no seed phrase, no friction." delay={0} />
             <FeatureCard icon={<ZapIcon />} title="Pool-based yield" desc="A 3% baseline is guaranteed for everyone. Your activity score grows your share of a redistribution pool — the most active runners take the biggest slice." delay={100} />
             <FeatureCard icon={<VaultIcon />} title="Multi-vault on-chain" desc="Deposit USDC into curated Morpho vaults — Steakhouse Prime and Gauntlet on Base, Gauntlet Frontier on Ethereum. Withdraw any time." delay={200} />

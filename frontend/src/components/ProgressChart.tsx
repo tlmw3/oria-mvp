@@ -23,7 +23,7 @@ export function ProgressChart({ data, targetKm }: Props) {
   return (
     <div className="w-full h-[180px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 14, right: 16, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="kmGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.3} />
@@ -64,7 +64,16 @@ export function ProgressChart({ data, targetKm }: Props) {
             stroke="#F59E0B"
             strokeDasharray="4 4"
             strokeWidth={1}
-            label={{ value: `${targetKm}km goal`, fill: "#F59E0B", fontSize: 10, position: "right" }}
+            // insideTopRight keeps the label inside the chart area so it
+            // doesn't overlap the last X-axis tick (which used to swallow
+            // the latest week's date).
+            label={{
+              value: `${targetKm}km goal`,
+              fill: "#F59E0B",
+              fontSize: 10,
+              position: "insideTopRight",
+              offset: 4,
+            }}
           />
           <Area
             type="monotone"

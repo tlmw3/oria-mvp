@@ -327,8 +327,8 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-[17px] leading-[1.75] mb-9 max-w-[430px]" style={{ color: "rgba(196,181,253,0.8)" }}>
-              The crypto savings jar that rewards your consistency. Hit your weekly fitness goals, grow your streak, unlock up to{" "}
-              <span className="font-semibold text-purple-300">8% APY</span>. Challenge friends and save together.
+              The crypto savings jar that rewards your consistency. Hit your weekly fitness goals, grow your streak, and boost your yield above the{" "}
+              <span className="font-semibold text-purple-300">3% baseline</span>. Challenge friends and save together.
             </p>
 
             <div className="flex gap-4 flex-wrap">
@@ -426,7 +426,7 @@ export default function LandingPage() {
           </Reveal>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(270px,1fr))] gap-4">
             <FeatureCard icon={<JarIcon />} title="Programmable Jars" desc="Set a weekly running target. Your jar fills as you hit milestones. Visual progress that makes saving tangible and satisfying." delay={0} />
-            <FeatureCard icon={<ZapIcon />} title="Streak-Boosted Yield" desc="Base APY starts at 4%. Every consecutive week you meet your goal, your rate climbs — up to 8%. Powered by Morpho lending." delay={100} />
+            <FeatureCard icon={<ZapIcon />} title="Streak-Boosted Yield" desc="A 3% baseline is guaranteed for everyone. Each consistent week grows your share of a redistribution pool — the most active runners take a bigger slice. Powered by Morpho lending." delay={100} />
             <FeatureCard icon={<UsersIcon />} title="Social Challenges" desc="Create group challenges with friends. Compete on leaderboards, share milestones, and unlock multiplier bonuses together." delay={200} />
             <FeatureCard icon={<LockIcon />} title="Non-Custodial" desc="Your keys, your funds. Built on Avalanche with Privy embedded wallets — no seed phrase needed, instant onboarding." delay={300} />
             <FeatureCard icon={<ActivityIcon />} title="Activity Tracking" desc="Connect Strava or Apple Health. We verify your workouts automatically and update your streak every week." delay={400} />
@@ -448,7 +448,7 @@ export default function LandingPage() {
           <div className="flex flex-col gap-10 max-w-[520px] mx-auto">
             <Step number="1" title="Connect & Set Goals" desc="Sign in with email or wallet via Privy. Choose your activity and set a weekly km target. No seed phrase, no friction." delay={0} />
             <Step number="2" title="Deposit & Start Earning" desc="Fund your jar with USDC or AVAX. Hit 'Start Earning' and your funds begin generating yield through Morpho's lending protocol." delay={150} />
-            <Step number="3" title="Stay Consistent, Earn More" desc="Meet your weekly goal to grow your streak. Each week adds to your multiplier — 10 consecutive weeks unlocks max 8% APY." delay={300} />
+            <Step number="3" title="Stay Consistent, Earn More" desc="Meet your weekly goal to grow your streak. Each week feeds your activity score; 16 consecutive weeks max out the streak component and your share of the bonus pool." delay={300} />
           </div>
         </div>
       </section>

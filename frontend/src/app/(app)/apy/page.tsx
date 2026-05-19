@@ -32,8 +32,6 @@ export default function ApyDetailPage() {
   }
 
   const b = streak?.apyBreakdown;
-  const vaultRate = b?.vaultRate ?? 0;
-  const spread = b?.spread ?? 1;
   const baseline = b?.baseline ?? 3;
   const poolRate = b?.poolRate ?? 0;
   const myBonus = b?.bonus ?? 0;
@@ -86,13 +84,13 @@ export default function ApyDetailPage() {
         </div>
       </Card>
 
-      {/* Breakdown — APY math (the Oria operating margin is folded into
-          "Morpho yield available" so the user sees their actual starting
-          point rather than the raw vault rate). */}
+      {/* Breakdown — APY math.
+          Intentionally framed around what the user gets, not around the
+          underlying yield source: surfacing the raw vault rate or the
+          Oria margin would push savvy users to bypass the app entirely. */}
       <Card className="!p-5">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-4">How your APY is built</p>
         <div className="flex flex-col gap-2">
-          <Row label="Morpho yield available" value={`${(vaultRate - spread).toFixed(2)}%`} muted />
           <Row label="Baseline (guaranteed)" value={`${baseline.toFixed(2)}%`} color="text-accent-purple-bright" />
           <Row label="Bonus pool available" value={`${poolRate.toFixed(2)}%`} muted />
           <div className="h-px bg-oria my-1.5" />
@@ -100,7 +98,7 @@ export default function ApyDetailPage() {
           <Row label="Your total" value={`${effective.toFixed(2)}%`} color="text-accent-purple-bright" bold large />
         </div>
         <p className="text-[11px] text-text-muted mt-4 leading-relaxed">
-          The bonus pool ({poolRate.toFixed(2)}%) is redistributed among all users based on activity score. Active users get more, inactive users get only the baseline.
+          Everyone earns the {baseline.toFixed(2)}% baseline. The {poolRate.toFixed(2)}% bonus pool is redistributed weekly based on your activity score — the more consistent you are, the bigger your slice.
         </p>
       </Card>
 

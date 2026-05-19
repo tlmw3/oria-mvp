@@ -86,14 +86,13 @@ export default function ApyDetailPage() {
         </div>
       </Card>
 
-      {/* Breakdown — APY math */}
+      {/* Breakdown — APY math (the Oria operating margin is folded into
+          "Morpho yield available" so the user sees their actual starting
+          point rather than the raw vault rate). */}
       <Card className="!p-5">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-4">How your APY is built</p>
         <div className="flex flex-col gap-2">
-          <Row label="Steakhouse Prime USDC (Morpho)" value={`${vaultRate.toFixed(2)}%`} muted />
-          <Row label="Oria spread" value={`−${spread.toFixed(2)}%`} muted />
-          <div className="h-px bg-oria my-1.5" />
-          <Row label="Distributable" value={`${(vaultRate - spread).toFixed(2)}%`} muted />
+          <Row label="Morpho yield available" value={`${(vaultRate - spread).toFixed(2)}%`} muted />
           <Row label="Baseline (guaranteed)" value={`${baseline.toFixed(2)}%`} color="text-accent-purple-bright" />
           <Row label="Bonus pool available" value={`${poolRate.toFixed(2)}%`} muted />
           <div className="h-px bg-oria my-1.5" />

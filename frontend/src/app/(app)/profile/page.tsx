@@ -2,15 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/Card";
-import { Avatar } from "@/components/Avatar";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useUser, useAppleHealthStatus, useConnectAppleHealth, useStravaStatus, useStravaSync } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
-import { getInitials } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
-import { DEFAULT_AVATARS } from "@/lib/defaultAvatars";
 
 export default function ProfilePage() {
   const { data: user, isLoading, refetch } = useUser();
@@ -110,10 +107,51 @@ export default function ProfilePage() {
       {/* Avatar & Name */}
       <div className="flex flex-col items-center py-4">
         <div className="relative mb-4">
-          <Avatar initials={getInitials(displayName || "User")} size={84} highlight src={avatarUrl} />
+          {avatarUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={avatarUrl}
+              alt="Profile"
+              className="rounded-full object-cover"
+              style={{
+                width: 84,
+                height: 84,
+                border: "2px solid #A78BFA",
+                boxShadow: "0 4px 16px rgba(139,92,246,0.4)",
+              }}
+            />
+          ) : (
+            <div
+              className="rounded-full flex items-end justify-center overflow-hidden"
+              style={{
+                width: 84,
+                height: 84,
+                background: "linear-gradient(160deg, rgba(167,139,250,0.18), rgba(124,58,237,0.10))",
+                border: "2px solid #A78BFA",
+                boxShadow: "0 4px 16px rgba(139,92,246,0.4)",
+              }}
+              aria-label="No profile photo set"
+            >
+              <svg
+                width={84}
+                height={84}
+                viewBox="0 0 64 64"
+                fill="none"
+                stroke="#E9D5FF"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="32" cy="24" r="11" />
+                <path d="M11 60c0-11.6 9.4-21 21-21s21 9.4 21 21" />
+              </svg>
+            </div>
+          )}
           <button
             onClick={handleAvatarPick}
             className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full gradient-brand flex items-center justify-center shadow-button border-2 border-[#07070B] cursor-pointer active:scale-90 transition-transform"
+            aria-label="Upload profile photo"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
@@ -129,41 +167,21 @@ export default function ProfilePage() {
           />
         </div>
         <p className="text-lg font-bold text-text-primary">{displayName || "Set your name"}</p>
-        {avatarUrl && (
+        {avatarUrl ? (
           <button
             onClick={() => setAvatarUrl(null)}
             className="text-[11px] text-text-muted mt-1 cursor-pointer bg-transparent"
           >
             Remove photo
           </button>
+        ) : (
+          <button
+            onClick={handleAvatarPick}
+            className="text-[11px] text-accent-purple-bright mt-1 cursor-pointer bg-transparent font-semibold"
+          >
+            Upload a photo
+          </button>
         )}
-
-        {/* Default avatar picker */}
-        <div className="mt-5 w-full max-w-[300px]">
-          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider text-center mb-2.5">
-            Or pick a preset
-          </p>
-          <div className="grid grid-cols-4 gap-2.5">
-            {DEFAULT_AVATARS.map((url) => {
-              const active = avatarUrl === url;
-              return (
-                <button
-                  key={url}
-                  onClick={() => setAvatarUrl(url)}
-                  className={`aspect-square rounded-full overflow-hidden transition-all cursor-pointer ${
-                    active
-                      ? "ring-2 ring-accent-purple-bright ring-offset-2 ring-offset-[#07070B] scale-105"
-                      : "opacity-80 hover:opacity-100"
-                  }`}
-                  aria-label="Choose avatar"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* Display Name */}

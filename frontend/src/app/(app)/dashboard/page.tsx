@@ -130,8 +130,8 @@ export default function DashboardPage() {
 
       {/* Greeting + Balance Hero */}
       <section className="pt-2 pb-1">
-        <p className="text-[13px] text-text-secondary font-medium">
-          Hello, <span className="text-text-primary">{displayName}</span>
+        <p className="text-[16px] text-text-secondary font-medium">
+          Hello, <span className="text-text-primary font-semibold">{displayName}</span>
         </p>
         <div className="mt-3 flex items-baseline gap-1">
           <span className="text-[15px] text-text-muted font-medium mr-1">{bal.symbol}</span>

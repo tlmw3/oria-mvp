@@ -36,7 +36,10 @@ export function ProgressChart({ data, targetKm }: Props) {
             tick={{ fill: "#64697A", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
-            interval="preserveStartEnd"
+            // interval=0 forces every label to render; the default heuristic
+            // was dropping the second-to-last tick to avoid overlap with the
+            // ReferenceLine label on the right.
+            interval={0}
           />
           <YAxis
             tick={{ fill: "#64697A", fontSize: 10 }}

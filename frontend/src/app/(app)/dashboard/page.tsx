@@ -585,19 +585,43 @@ export default function DashboardPage() {
                   const liked = !!user?.id && f.likedBy.includes(user.id);
                   const isMine = user?.id === f.userId;
                   const accent = ACCENT[f.eventType] ?? { bg: "bg-oria-section", ring: "" };
+                  const streakCount = f.user.streakCount ?? 0;
+                  const isHotStreak = streakCount >= 5;
                   return (
                     <div
                       key={f.id}
                       className={`flex items-start gap-3 p-3 rounded-2xl ${accent.bg} ${accent.ring ? `ring-1 ${accent.ring}` : ""} border border-oria`}
                     >
-                      <Avatar initials={getInitials(f.user.displayName)} size={36} src={f.user.avatarUrl} />
+                      <div className="relative shrink-0">
+                        <Avatar initials={getInitials(f.user.displayName)} size={40} src={f.user.avatarUrl} />
+                        {streakCount > 0 && (
+                          <div
+                            className={`absolute -bottom-1 -right-1 min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center gap-0.5 border-2 border-[#07070B] shadow-button ${
+                              isHotStreak
+                                ? "bg-gradient-to-br from-accent-sport to-accent-gold"
+                                : "bg-gradient-to-br from-accent-purple to-accent-purple-bright"
+                            }`}
+                            title={`${streakCount}-week streak`}
+                          >
+                            <span className="text-[10px]" aria-hidden>{isHotStreak ? "🔥" : "✦"}</span>
+                            <span className="text-[10px] font-extrabold text-white tabular-nums leading-none">{streakCount}</span>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] text-text-primary leading-snug">
                           <span className="font-semibold">{isMine ? "You" : (f.user.displayName ?? "User")}</span>{" "}
                           <span className="text-text-secondary">{text}</span>
                           <span className="ml-1">{emoji}</span>
                         </p>
-                        <p className="text-[11px] text-text-muted mt-0.5">{timeAgo(f.createdAt)}</p>
+                        <p className="text-[11px] text-text-muted mt-0.5 flex items-center gap-2">
+                          <span>{timeAgo(f.createdAt)}</span>
+                          {streakCount > 0 && (
+                            <span className={`tabular-nums font-semibold ${isHotStreak ? "text-accent-sport" : "text-accent-purple-bright"}`}>
+                              · {streakCount}w streak
+                            </span>
+                          )}
+                        </p>
                       </div>
                       <button
                         onClick={() => {

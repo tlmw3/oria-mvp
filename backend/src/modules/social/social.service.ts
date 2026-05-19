@@ -208,7 +208,7 @@ export async function getFeed(
   // Include own events too
   const userIds = [userId, ...friendIds];
 
-  return prisma.feedEvent.findMany({
+  const events = await prisma.feedEvent.findMany({
     where: {
       userId: { in: userIds },
       ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
@@ -219,12 +219,25 @@ export async function getFeed(
           id: true,
           displayName: true,
           avatarUrl: true,
+          streak: { select: { currentCount: true } },
         },
       },
     },
     orderBy: { createdAt: "desc" },
     take: limit,
   });
+
+  // Flatten the streak into the user payload so the feed UI can show a
+  // "this user is on an N-week streak" badge without a second round trip.
+  return events.map((e: typeof events[0]) => ({
+    ...e,
+    user: {
+      id: e.user.id,
+      displayName: e.user.displayName,
+      avatarUrl: e.user.avatarUrl,
+      streakCount: e.user.streak?.currentCount ?? 0,
+    },
+  }));
 }
 
 export async function getPendingRequests(prisma: PrismaClient, userId: string) {

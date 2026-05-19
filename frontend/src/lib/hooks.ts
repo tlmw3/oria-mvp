@@ -98,6 +98,7 @@ interface FeedEvent {
     id: string;
     displayName: string | null;
     avatarUrl: string | null;
+    streakCount: number;
   };
 }
 

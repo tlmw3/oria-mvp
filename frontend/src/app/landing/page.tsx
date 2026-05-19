@@ -2,13 +2,21 @@
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
-import { SavingsJar } from "@/components/SavingsJar";
 
 /* ─── SVG Icons ─── */
-const JarIcon = () => (
+const VaultIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 3h12v2a6 6 0 01-6 6 6 6 0 01-6-6V3z" />
-    <path d="M6 11c0 3.314 2.686 6 6 6s6-2.686 6-6v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5z" />
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="12" cy="12" r="3.5" />
+    <line x1="12" y1="3" x2="12" y2="5" />
+    <line x1="12" y1="19" x2="12" y2="21" />
+  </svg>
+);
+const FeedIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 11a9 9 0 019 9" />
+    <path d="M4 4a16 16 0 0116 16" />
+    <circle cx="5" cy="19" r="1" />
   </svg>
 );
 const ZapIcon = () => (
@@ -35,15 +43,6 @@ const ActivityIcon = () => (
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
   </svg>
 );
-const TrophyIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 9H4a2 2 0 000 4c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4a2 2 0 000-4h-2" />
-    <path d="M6 3h12v6a6 6 0 01-12 0V3z" />
-    <line x1="12" y1="17" x2="12" y2="21" />
-    <line x1="9" y1="21" x2="15" y2="21" />
-  </svg>
-);
-
 /* ─── Scroll-reveal wrapper ─── */
 function Reveal({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -318,7 +317,7 @@ export default function LandingPage() {
               style={{ background: "rgba(124,58,237,0.2)", border: "1px solid rgba(124,58,237,0.35)", color: "#c4b5fd" }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-              LIVE ON AVALANCHE TESTNET
+              LIVE — BASE + ETHEREUM · MORPHO
             </div>
 
             <h1 className="font-extrabold leading-[1.07] tracking-tight text-white mb-6 text-[clamp(38px,5vw,58px)]">
@@ -362,37 +361,64 @@ export default function LandingPage() {
                     className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
                     style={{ background: c, border: "2px solid #0d0818", zIndex: 4 - i }}
                   >
-                    {["T", "A", "M", "S"][i]}
+                    {["T", "E", "M", "L"][i]}
                   </div>
                 ))}
               </div>
               <p className="text-[13px]" style={{ color: "rgba(196,181,253,0.6)" }}>
-                <span className="font-semibold text-purple-300">47 users</span> already saving
+                <span className="font-semibold text-purple-300">Early access</span> · join the first runners
               </p>
             </div>
           </div>
 
-          {/* Right: Jar + stats card */}
+          {/* Right: a phone-style snapshot of the actual app surface */}
           <div
-            className={`flex-none flex flex-col items-center gap-5 transition-all duration-[1100ms] ease-out ${heroVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            className={`flex-none flex flex-col items-center gap-4 transition-all duration-[1100ms] ease-out ${heroVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
             style={{ transitionDelay: heroVis ? "300ms" : "0ms" }}
           >
-            <SavingsJar fillPercent={72} streak={6} />
-
-            {/* Week dots card */}
+            {/* Streak hero card */}
             <div
-              className="rounded-2xl px-6 py-4 flex flex-col gap-3"
+              className="rounded-3xl px-7 py-6 flex flex-col items-center gap-2 min-w-[260px]"
+              style={{
+                background: "linear-gradient(160deg, rgba(124,58,237,0.22) 0%, rgba(167,139,250,0.08) 100%)",
+                border: "1px solid rgba(167,139,250,0.25)",
+                backdropFilter: "blur(20px)",
+                boxShadow: "0 12px 40px rgba(124,58,237,0.18)",
+              }}
+            >
+              <p className="text-[10px] font-semibold tracking-[0.18em] uppercase" style={{ color: "rgba(196,181,253,0.55)" }}>
+                Your streak
+              </p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[64px] leading-none font-extrabold text-white tabular-nums">6</span>
+                <span className="text-xl font-bold" style={{ color: "rgba(196,181,253,0.7)" }}>weeks</span>
+              </div>
+              <div
+                className="mt-2 px-3 py-1 rounded-full inline-flex items-center gap-1.5 text-[11px] font-semibold"
+                style={{ background: "rgba(252,76,2,0.18)", border: "1px solid rgba(252,76,2,0.35)", color: "#fdba74" }}
+              >
+                <span aria-hidden>🔥</span>
+                <span className="tabular-nums">+1.37% bonus from the pool</span>
+              </div>
+            </div>
+
+            {/* This week's progress */}
+            <div
+              className="rounded-2xl px-6 py-4 flex flex-col gap-3 min-w-[260px]"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(167,139,250,0.18)", backdropFilter: "blur(16px)", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}
             >
-              <p className="text-xs font-semibold text-center" style={{ color: "rgba(196,181,253,0.6)" }}>This week&apos;s progress</p>
+              <div className="flex justify-between items-baseline">
+                <p className="text-xs font-semibold" style={{ color: "rgba(196,181,253,0.6)" }}>This week</p>
+                <p className="text-xs tabular-nums" style={{ color: "rgba(196,181,253,0.6)" }}>3/5 sessions</p>
+              </div>
               <div className="flex gap-2.5 justify-center">
                 {days.map((d, i) => (
-                  <WeekPill key={i} active={i < 5} label={d} />
+                  <WeekPill key={i} active={i < 3} label={d} />
                 ))}
               </div>
               <div className="flex justify-between items-center pt-1 border-t" style={{ borderColor: "rgba(167,139,250,0.12)" }}>
-                <span className="text-xs" style={{ color: "rgba(196,181,253,0.55)" }}>APY</span>
-                <span className="text-sm font-bold text-purple-300">7.24%</span>
+                <span className="text-xs" style={{ color: "rgba(196,181,253,0.55)" }}>Effective APY</span>
+                <span className="text-sm font-bold text-purple-300 tabular-nums">4.37%</span>
               </div>
             </div>
           </div>
@@ -403,10 +429,10 @@ export default function LandingPage() {
       <section className="py-8 relative z-[1]" style={{ borderTop: "1px solid rgba(167,139,250,0.1)", borderBottom: "1px solid rgba(167,139,250,0.1)", background: "rgba(255,255,255,0.02)" }}>
         <div className="max-w-[1080px] mx-auto px-6 flex justify-around flex-wrap gap-5">
           {[
-            { v: "€88B", l: "Addressable market" },
-            { v: "4–8%", l: "Dynamic APY" },
-            { v: "<2s", l: "Finality on Avalanche" },
-            { v: "0%", l: "Smart contract risk*" },
+            { v: "3%", l: "Baseline APY, guaranteed" },
+            { v: "16w", l: "Streak unlocks max share" },
+            { v: "3", l: "Morpho vaults · Base + Eth" },
+            { v: "ERC-4626", l: "On-chain custody" },
           ].map((s, i) => (
             <div key={i} className="text-center min-w-[130px]">
               <div
@@ -428,12 +454,12 @@ export default function LandingPage() {
             <SectionHead label="Features" title="Savings that" highlight="move with you" />
           </Reveal>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(270px,1fr))] gap-4">
-            <FeatureCard icon={<JarIcon />} title="Programmable Jars" desc="Set a weekly running target. Your jar fills as you hit milestones. Visual progress that makes saving tangible and satisfying." delay={0} />
-            <FeatureCard icon={<ZapIcon />} title="Streak-Boosted Yield" desc="A 3% baseline is guaranteed for everyone. Each consistent week grows your share of a redistribution pool — the most active runners take a bigger slice. Powered by Morpho lending." delay={100} />
-            <FeatureCard icon={<UsersIcon />} title="Social Challenges" desc="Create group challenges with friends. Compete on leaderboards, share milestones, and unlock multiplier bonuses together." delay={200} />
-            <FeatureCard icon={<LockIcon />} title="Non-Custodial" desc="Your keys, your funds. Built on Avalanche with Privy embedded wallets — no seed phrase needed, instant onboarding." delay={300} />
-            <FeatureCard icon={<ActivityIcon />} title="Activity Tracking" desc="Connect Strava or Apple Health. We verify your workouts automatically and update your streak every week." delay={400} />
-            <FeatureCard icon={<TrophyIcon />} title="Milestone Unlocks" desc="Hit 5 weeks? Unlock social sharing. 10 weeks? Earn max APY. Suggested progression paths keep you motivated." delay={500} />
+            <FeatureCard icon={<LockIcon />} title="Embedded wallets" desc="Sign in with email, Google or Apple via Privy. A non-custodial wallet is created instantly — no seed phrase, no friction." delay={0} />
+            <FeatureCard icon={<ZapIcon />} title="Pool-based yield" desc="A 3% baseline is guaranteed for everyone. Your activity score grows your share of a redistribution pool — the most active runners take the biggest slice." delay={100} />
+            <FeatureCard icon={<VaultIcon />} title="Multi-vault on-chain" desc="Deposit USDC into curated Morpho vaults — Steakhouse Prime and Gauntlet on Base, Gauntlet Frontier on Ethereum. Withdraw any time." delay={200} />
+            <FeatureCard icon={<ActivityIcon />} title="Strava or manual" desc="Connect Strava for automatic syncing of runs and rides, or log weekly km by hand. Pace is averaged within your dominant discipline." delay={300} />
+            <FeatureCard icon={<UsersIcon />} title="Group challenges" desc="Create shared weekly goals with friends. See a collective consistency grid, weekly participation chart, and five team milestones — no APY multiplier, just real emulation." delay={400} />
+            <FeatureCard icon={<FeedIcon />} title="Activity feed + reactions" desc="Friends' goals, streak milestones and challenge wins land on your home feed. Cheer each other with one tap; streak badges show who's on a tear." delay={500} />
           </div>
         </div>
       </section>
@@ -449,9 +475,9 @@ export default function LandingPage() {
             <SectionHead label="How it works" title="Three steps to" highlight="smarter saving" />
           </Reveal>
           <div className="flex flex-col gap-10 max-w-[520px] mx-auto">
-            <Step number="1" title="Connect & Set Goals" desc="Sign in with email or wallet via Privy. Choose your activity and set a weekly km target. No seed phrase, no friction." delay={0} />
-            <Step number="2" title="Deposit & Start Earning" desc="Fund your jar with USDC or AVAX. Hit 'Start Earning' and your funds begin generating yield through Morpho's lending protocol." delay={150} />
-            <Step number="3" title="Stay Consistent, Earn More" desc="Meet your weekly goal to grow your streak. Each week feeds your activity score; 16 consecutive weeks max out the streak component and your share of the bonus pool." delay={300} />
+            <Step number="1" title="Connect & set goals" desc="Sign in with email, Google or Apple via Privy. Pick your discipline (running, cycling, steps), set a weekly km target, optionally connect Strava." delay={0} />
+            <Step number="2" title="Deposit & invest" desc="Fund your wallet with USDC and invest into one of three curated Morpho vaults — Steakhouse Prime or Gauntlet Prime on Base, Gauntlet Frontier on Ethereum. Withdraw whenever you want." delay={150} />
+            <Step number="3" title="Stay consistent, earn more" desc="Meet your weekly goal to grow your streak. Each week feeds your activity score; 16 consecutive weeks fully unlock the streak component and your share of the bonus pool." delay={300} />
           </div>
         </div>
       </section>
@@ -531,7 +557,7 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="text-xs" style={{ color: "rgba(196,181,253,0.4)" }}>
-            Built on Avalanche · Yield by Morpho · *MVP uses simulated yield
+            Built on Base + Ethereum · Yield by Morpho · MVP — APY numbers illustrative
           </div>
         </div>
       </footer>

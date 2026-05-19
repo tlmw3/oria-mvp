@@ -262,10 +262,17 @@ export default function DashboardPage() {
       {/* Streak Hero */}
       <Link href="/streak" className="block">
         <Card className="relative overflow-hidden !p-5 cursor-pointer active:scale-[0.98] transition-transform">
-          <div className="absolute -top-16 -right-10 w-[220px] h-[220px] rounded-full bg-[radial-gradient(circle,rgba(252,76,2,0.25)_0%,transparent_60%)] blur-[20px] pointer-events-none" />
+          <div className="absolute -top-16 -right-10 w-[240px] h-[240px] rounded-full bg-[radial-gradient(circle,rgba(252,76,2,0.18)_0%,transparent_60%)] blur-[24px] pointer-events-none" />
+          <div className="absolute -bottom-20 -left-12 w-[200px] h-[200px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.18)_0%,transparent_60%)] blur-[24px] pointer-events-none" />
           <div className="flex items-center gap-4 relative">
-            <div className="w-[82px] h-[82px] rounded-full gradient-sport flex items-center justify-center shadow-sport-glow flex-shrink-0">
-              <span className="text-[42px] font-extrabold text-white leading-none tracking-tight tabular-nums">
+            <div className="flex items-baseline gap-1.5 flex-shrink-0">
+              <span
+                className="text-[44px] leading-none drop-shadow-[0_2px_12px_rgba(252,76,2,0.45)]"
+                aria-hidden
+              >
+                🔥
+              </span>
+              <span className="text-[56px] font-extrabold text-text-primary leading-none tracking-tight tabular-nums">
                 {streakCount}
               </span>
             </div>

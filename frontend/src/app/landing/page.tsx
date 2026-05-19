@@ -329,7 +329,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-[17px] leading-[1.75] mb-9 max-w-[430px]" style={{ color: "rgba(196,181,253,0.8)" }}>
-              The crypto savings jar that rewards your consistency. Hit your weekly fitness goals, grow your streak, and boost your yield above the{" "}
+              The crypto savings app that rewards your consistency. Hit your weekly fitness goals, grow your streak, and boost your yield above the{" "}
               <span className="font-semibold text-purple-300">3% baseline</span>. Challenge friends and save together.
             </p>
 

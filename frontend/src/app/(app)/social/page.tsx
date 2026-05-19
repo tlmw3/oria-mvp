@@ -7,7 +7,6 @@ import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, ErrorCard } from "@/components/Skeleton";
 import {
   useLeaderboard,
-  useFeed,
   useDiscoverUsers,
   useSearchUsers,
   useSendFriendRequest,
@@ -19,10 +18,9 @@ import {
   useFriends,
   useRemoveFriend,
   usePokeFriend,
-  useLikeFeedEvent,
 } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
-import { timeAgo, getInitials, formatFeedEvent } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
 
 function PodiumRow({
   rank,
@@ -138,7 +136,6 @@ function UserActionButton({
 
 export default function SocialPage() {
   const { data: board, isLoading: boardLoading, isError: boardError, refetch: refetchBoard } = useLeaderboard();
-  const { data: feed, isLoading: feedLoading, isError: feedError, refetch: refetchFeed } = useFeed();
   const { data: discoverUsers } = useDiscoverUsers();
   const { data: friends } = useFriends();
   const { data: sentRequests } = useSentRequests();
@@ -149,7 +146,6 @@ export default function SocialPage() {
   const rejectRequest = useRejectFriendRequest();
   const removeFriend = useRemoveFriend();
   const pokeFriend = usePokeFriend();
-  const likeFeed = useLikeFeedEvent();
   const { toast } = useToast();
 
   const [query, setQuery] = useState("");
@@ -175,7 +171,7 @@ export default function SocialPage() {
     });
   };
 
-  if (boardLoading || feedLoading) {
+  if (boardLoading) {
     return (
       <div className="flex flex-col gap-4">
         <div className="pt-1 pb-2">
@@ -187,13 +183,13 @@ export default function SocialPage() {
     );
   }
 
-  if (boardError || feedError) {
+  if (boardError) {
     return (
       <div className="flex flex-col gap-4">
         <div className="pt-1 pb-2">
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">Friends</h1>
         </div>
-        <ErrorCard onRetry={() => { refetchBoard(); refetchFeed(); }} />
+        <ErrorCard onRetry={() => { refetchBoard(); }} />
       </div>
     );
   }
@@ -493,44 +489,7 @@ export default function SocialPage() {
             </Card>
           )}
 
-          {/* Activity feed */}
-          <Card>
-            <p className="text-base font-bold text-text-primary mb-3 tracking-tight">Activity feed</p>
-            {feed && feed.length > 0 ? (
-              feed.map((f, i) => {
-                const { text, emoji } = formatFeedEvent(f.eventType, f.payload as Record<string, unknown>);
-                return (
-                  <div key={f.id} className={`flex gap-3 py-3 ${i < feed.length - 1 ? "border-b border-oria" : ""}`}>
-                    <Avatar initials={getInitials(f.user.displayName)} size={36} src={f.user.avatarUrl} />
-                    <div className="flex-1">
-                      <p className="text-[13px] text-text-primary leading-snug">
-                        <span className="font-semibold">{f.user.displayName ?? "User"}</span>{" "}
-                        <span className="text-text-secondary">{text}</span>{" "}
-                        <span className="text-base">{emoji}</span>
-                      </p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <p className="text-[11px] text-text-muted">{timeAgo(f.createdAt)}</p>
-                        <button
-                          onClick={() => likeFeed.mutate(f.id)}
-                          className="flex items-center gap-1 text-[11px] text-text-muted hover:text-accent-purple-bright cursor-pointer transition-colors"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill={f.likes > 0 ? "#A78BFA" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                          </svg>
-                          {f.likes > 0 && <span>{f.likes}</span>}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-sm font-semibold text-text-primary mb-1">No activity yet</p>
-                <p className="text-[12px] text-text-muted">Your friends&apos; activity will appear here.</p>
-              </div>
-            )}
-          </Card>
+          {/* Activity feed lives on Home — keep this page focused on people */}
         </>
       )}
     </div>

@@ -556,34 +556,35 @@ export default function DashboardPage() {
         goalMet={currentKm + syncedKm >= targetKm}
       />
 
-      {/* Consistency feed — friends' recent achievements + reactions */}
+      {/* Activity feed — friends' recent events + reactions (moved from /social) */}
       {(() => {
-        const consistencyEvents = (feed ?? []).filter((f) =>
-          ["streak_milestone", "goal_met", "challenge_completed"].includes(f.eventType)
-        ).slice(0, 6);
+        const events = (feed ?? []).slice(0, 10);
         const ACCENT: Record<string, { bg: string; ring: string }> = {
           streak_milestone: { bg: "bg-accent-gold/15", ring: "ring-accent-gold/30" },
           goal_met: { bg: "bg-success-500/15", ring: "ring-success-500/30" },
           challenge_completed: { bg: "bg-accent-purple/15", ring: "ring-accent-purple/30" },
+          challenge_joined: { bg: "bg-accent-purple/10", ring: "" },
+          deposit: { bg: "bg-accent-gold/10", ring: "" },
+          streak_lost: { bg: "bg-error-500/10", ring: "" },
         };
         return (
           <Card className="!p-5">
             <div className="flex justify-between items-center mb-3">
               <div>
-                <p className="text-sm font-bold text-text-primary tracking-tight">Friends&apos; achievements</p>
+                <p className="text-sm font-bold text-text-primary tracking-tight">Activity feed</p>
                 <p className="text-[11px] text-text-muted mt-0.5">React to keep the energy alive</p>
               </div>
               <Link href="/social" className="text-[12px] text-accent-purple-bright font-semibold hover:text-accent-purple">
-                See all →
+                Friends →
               </Link>
             </div>
-            {consistencyEvents.length > 0 ? (
+            {events.length > 0 ? (
               <div className="flex flex-col gap-2.5">
-                {consistencyEvents.map((f) => {
+                {events.map((f) => {
                   const { text, emoji } = formatFeedEvent(f.eventType, f.payload as Record<string, unknown>);
                   const liked = !!user?.id && f.likedBy.includes(user.id);
                   const isMine = user?.id === f.userId;
-                  const accent = ACCENT[f.eventType] ?? { bg: "bg-accent-purple/10", ring: "" };
+                  const accent = ACCENT[f.eventType] ?? { bg: "bg-oria-section", ring: "" };
                   return (
                     <div
                       key={f.id}
@@ -629,9 +630,9 @@ export default function DashboardPage() {
                     <path d="M22 11l-3 3-3-3M19 14V4" />
                   </svg>
                 </div>
-                <p className="text-[13px] text-text-secondary text-center">No achievements from friends yet.</p>
+                <p className="text-[13px] text-text-secondary text-center">Nothing in the feed yet.</p>
                 <Link href="/social" className="text-[11px] text-accent-purple-bright font-semibold mt-1">
-                  Invite some →
+                  Invite friends →
                 </Link>
               </div>
             )}

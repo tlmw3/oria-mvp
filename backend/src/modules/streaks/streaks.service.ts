@@ -101,6 +101,21 @@ export async function logActivity(
         },
       });
 
+      // Feed events so friends see the activity right away — previously these
+      // were only emitted by the weekly cron, so a real-time log went silent.
+      await prisma.feedEvent.create({
+        data: {
+          userId,
+          eventType: "goal_met",
+          payload: { weekStart: weekStart.toISOString(), distanceKm: totalDistance },
+        },
+      });
+      if ((STREAK_MILESTONES as readonly number[]).includes(newCount)) {
+        await prisma.feedEvent.create({
+          data: { userId, eventType: "streak_milestone", payload: { streakCount: newCount } },
+        });
+      }
+
       // Push notification for goal met
       sendPushToUser(prisma, userId, {
         title: "Weekly Goal Crushed!",

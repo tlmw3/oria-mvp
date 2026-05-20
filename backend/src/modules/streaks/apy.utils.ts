@@ -86,8 +86,12 @@ export function computePoolApy(
   const rawBonus = poolRate * (score / meanScore);
   const cap = poolRate * APY.POOL_CAP_MULTIPLIER;
   const bonus = Math.max(0, Math.min(cap, rawBonus));
+  // Hard ceiling: no user can ever earn more than what the underlying vault
+  // is generating. Without this an active user could be subsidised by
+  // inactive users into "beating Morpho", which reads as suspicious.
   const effective = Math.min(
     APY.EFFECTIVE_CAP,
+    vaultRate,
     Math.round((APY.BASELINE + bonus) * 100) / 100,
   );
 

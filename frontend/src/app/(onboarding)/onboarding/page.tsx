@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/Card";
 import { apiFetch, setAuthTokenGetter } from "@/lib/api";
@@ -8,7 +8,6 @@ import { usePrivy, useLogin, type User } from "@privy-io/react-auth";
 import { QRCodeSVG } from "qrcode.react";
 import { useWalletBalance } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
-import { randomDefaultAvatar } from "@/lib/defaultAvatars";
 
 function deriveDisplayName(user: User): string {
   const u = user as unknown as {
@@ -23,11 +22,10 @@ function deriveDisplayName(user: User): string {
     u.apple?.email?.split("@")[0],
   ].filter((s): s is string => !!s && s.length > 0);
   if (candidates.length > 0) return candidates[0].slice(0, 50);
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `Runner-${suffix}`;
+  return "";
 }
 
-const STEPS = 4;
+const STEPS = 5;
 
 function ProgressDots({ current, total }: { current: number; total: number }) {
   return (
@@ -97,10 +95,12 @@ function ConnectWalletStep({
   onNext,
   onBack,
   onSignIn,
+  onPrivyName,
 }: {
   onNext: () => void;
   onBack: () => void;
   onSignIn: () => void;
+  onPrivyName: (name: string) => void;
 }) {
   const [loggingIn, setLoggingIn] = useState(false);
   const { getAccessToken } = usePrivy();
@@ -111,20 +111,22 @@ function ConnectWalletStep({
       setAuthTokenGetter(() => getAccessToken());
       const walletAddr = params.user.wallet?.address;
       let isNew = true;
+      // Create the user record with no displayName / no avatar so the next
+      // step (NameStep) is forced to collect one — otherwise we'd silently
+      // create accounts called "User" that nobody can search for.
       try {
         const data = await apiFetch("/api/auth/verify", {
           method: "POST",
-          body: JSON.stringify({
-            walletAddr,
-            displayName: deriveDisplayName(params.user),
-            avatarUrl: randomDefaultAvatar(),
-          }),
+          body: JSON.stringify({ walletAddr }),
         }) as { isNew?: boolean };
         if (data?.isNew === false) isNew = false;
       } catch {
         // ignore — treat as new user on error
       }
       if (isNew) {
+        // Pre-fill the name step with whatever Privy gave us, but the user
+        // still has to confirm/edit and submit before continuing.
+        onPrivyName(deriveDisplayName(params.user));
         onNext();
       } else {
         // Returning user — skip onboarding steps, go straight to dashboard
@@ -158,7 +160,7 @@ function ConnectWalletStep({
 
       <div className="mt-6 mb-2">
         <p className="text-xs font-semibold text-purple-600 tracking-widest uppercase mb-2">
-          Step 1 of 3
+          Step 1 of 4
         </p>
         <h1 className="text-2xl font-bold text-text-primary tracking-tight">
           Connect Your Wallet
@@ -190,7 +192,188 @@ function ConnectWalletStep({
   );
 }
 
-// ─── Step 3: Choose Goal ───
+// ─── Step 3: Choose Your Name (+ optional photo) ───
+function ChooseNameStep({
+  initialName,
+  onNext,
+  onBack,
+}: {
+  initialName: string;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // If Privy filled it in after mount, pre-populate (but don't overwrite
+    // user-typed input).
+    if (initialName && !name) setName(initialName);
+  }, [initialName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAvatarPick = () => fileInputRef.current?.click();
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500_000) { toast("Image too large (max 500 KB)", "error"); return; }
+    const reader = new FileReader();
+    reader.onload = () => setAvatarUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const trimmed = name.trim();
+  const canContinue = trimmed.length >= 2;
+
+  const submit = async () => {
+    if (!canContinue || saving) return;
+    setSaving(true);
+    try {
+      await apiFetch("/api/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({ displayName: trimmed, avatarUrl }),
+      });
+      onNext();
+    } catch (e) {
+      const msg = e instanceof Error && e.message && !e.message.startsWith("API error")
+        ? e.message
+        : "Couldn't save your name — please retry";
+      toast(msg, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen px-6 py-10">
+      <div className="flex items-center gap-3 mb-2">
+        <button
+          onClick={onBack}
+          className="w-10 h-10 rounded-md flex items-center justify-center bg-purple-50 border-none cursor-pointer"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="mt-6 mb-6">
+        <p className="text-xs font-semibold text-purple-600 tracking-widest uppercase mb-2">
+          Step 2 of 4
+        </p>
+        <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+          Pick a name your friends will recognise
+        </h1>
+        <p className="text-sm text-text-secondary mt-2 leading-relaxed">
+          This is how you&apos;ll show up on leaderboards, challenges and the activity feed.
+        </p>
+      </div>
+
+      {/* Avatar — silhouette by default, optional upload */}
+      <div className="flex flex-col items-center mb-8">
+        <div className="relative">
+          {avatarUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={avatarUrl}
+              alt="Profile"
+              className="rounded-full object-cover"
+              style={{
+                width: 100,
+                height: 100,
+                border: "2px solid #A78BFA",
+                boxShadow: "0 4px 16px rgba(139,92,246,0.4)",
+              }}
+            />
+          ) : (
+            <div
+              className="rounded-full flex items-end justify-center overflow-hidden"
+              style={{
+                width: 100,
+                height: 100,
+                background: "linear-gradient(160deg, rgba(167,139,250,0.18), rgba(124,58,237,0.10))",
+                border: "2px solid #A78BFA",
+                boxShadow: "0 4px 16px rgba(139,92,246,0.4)",
+              }}
+              aria-label="No profile photo set"
+            >
+              <svg width={100} height={100} viewBox="0 0 64 64" fill="none" stroke="#E9D5FF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="32" cy="24" r="11" />
+                <path d="M11 60c0-11.6 9.4-21 21-21s21 9.4 21 21" />
+              </svg>
+            </div>
+          )}
+          <button
+            onClick={handleAvatarPick}
+            className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full gradient-brand flex items-center justify-center shadow-button border-2 border-[#07070B] cursor-pointer active:scale-90 transition-transform"
+            aria-label="Upload profile photo"
+            type="button"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={avatarUrl ? () => setAvatarUrl(null) : handleAvatarPick}
+          className={`text-[12px] mt-3 cursor-pointer bg-transparent font-semibold ${avatarUrl ? "text-text-muted" : "text-accent-purple-bright"}`}
+        >
+          {avatarUrl ? "Remove photo" : "Upload a photo (optional)"}
+        </button>
+      </div>
+
+      {/* Name input */}
+      <div>
+        <label htmlFor="onb-name" className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2 block">
+          Display name
+        </label>
+        <input
+          id="onb-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value.slice(0, 50))}
+          placeholder="Eve, Marco, sarah_k…"
+          autoComplete="name"
+          autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter" && canContinue) submit(); }}
+          className="w-full px-4 py-3.5 rounded-2xl border border-oria bg-oria-section text-[15px] text-text-primary placeholder:text-text-muted focus:border-accent-purple outline-none"
+        />
+        <p className="text-[11px] text-text-muted mt-2">
+          {trimmed.length < 2
+            ? "At least 2 characters so friends can find you."
+            : `${trimmed.length}/50`}
+        </p>
+      </div>
+
+      <div className="mt-8">
+        <button
+          onClick={submit}
+          disabled={!canContinue || saving}
+          className="w-full px-5 py-4 rounded-xl gradient-brand text-white shadow-button cursor-pointer border-none min-h-[56px] text-base font-semibold disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Continue"}
+        </button>
+      </div>
+
+      <div className="mt-auto pt-8">
+        <ProgressDots current={2} total={STEPS} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 4: Choose Goal ───
 function ChooseGoalStep({
   onNext,
   onBack,
@@ -255,7 +438,7 @@ function ChooseGoalStep({
 
       <div className="mt-6 mb-2">
         <p className="text-xs font-semibold text-purple-600 tracking-widest uppercase mb-2">
-          Step 2 of 3
+          Step 3 of 4
         </p>
         <h1 className="text-2xl font-bold text-text-primary tracking-tight">
           Set Your Goal
@@ -356,13 +539,13 @@ function ChooseGoalStep({
         >
           Continue
         </button>
-        <ProgressDots current={2} total={STEPS} />
+        <ProgressDots current={3} total={STEPS} />
       </div>
     </div>
   );
 }
 
-// ─── Step 4: Fund Wallet — show address + QR for the user to receive crypto ───
+// ─── Step 5: Fund Wallet — show address + QR for the user to receive crypto ───
 function FundWalletStep({
   onNext,
   onBack,
@@ -403,7 +586,7 @@ function FundWalletStep({
 
       <div className="mt-6 mb-2">
         <p className="text-xs font-semibold text-purple-600 tracking-widest uppercase mb-2">
-          Step 3 of 3
+          Step 4 of 4
         </p>
         <h1 className="text-2xl font-bold text-text-primary tracking-tight">
           Fund your Oria wallet
@@ -477,7 +660,7 @@ function FundWalletStep({
         >
           I&apos;ve sent funds (or do it later)
         </button>
-        <ProgressDots current={3} total={STEPS} />
+        <ProgressDots current={4} total={STEPS} />
       </div>
     </div>
   );
@@ -486,6 +669,7 @@ function FundWalletStep({
 // ─── Main Onboarding Page ───
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
+  const [privyName, setPrivyName] = useState("");
   const [goalType, setGoalType] = useState("running");
   const [targetKm, setTargetKm] = useState(10);
   const router = useRouter();
@@ -531,20 +715,32 @@ export default function OnboardingPage() {
     <>
       {step === 0 && <WelcomeStep onNext={() => setStep(1)} onSignIn={() => setStep(1)} />}
       {step === 1 && (
-        <ConnectWalletStep onNext={() => setStep(2)} onBack={() => setStep(0)} onSignIn={goToDashboard} />
+        <ConnectWalletStep
+          onNext={() => setStep(2)}
+          onBack={() => setStep(0)}
+          onSignIn={goToDashboard}
+          onPrivyName={setPrivyName}
+        />
       )}
       {step === 2 && (
-        <ChooseGoalStep
-          onNext={(gt, tk) => {
-            setGoalType(gt);
-            setTargetKm(tk);
-            setStep(3);
-          }}
+        <ChooseNameStep
+          initialName={privyName}
+          onNext={() => setStep(3)}
           onBack={() => setStep(1)}
         />
       )}
       {step === 3 && (
-        <FundWalletStep onNext={finish} onBack={() => setStep(2)} />
+        <ChooseGoalStep
+          onNext={(gt, tk) => {
+            setGoalType(gt);
+            setTargetKm(tk);
+            setStep(4);
+          }}
+          onBack={() => setStep(2)}
+        />
+      )}
+      {step === 4 && (
+        <FundWalletStep onNext={finish} onBack={() => setStep(3)} />
       )}
     </>
   );

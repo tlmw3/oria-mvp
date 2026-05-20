@@ -80,14 +80,15 @@ model Streak {
   longestCount Int      @default(0) @map("longest_count")
   /// Whether the goal was met last week (used during evaluation)
   lastWeekMet  Boolean  @default(false) @map("last_week_met")
-  /// Current APY percentage based on streak count (4.0 – 8.0)
-  currentApy   Float    @default(4.0) @map("current_apy")
+  /// Pool-model baseline APY (currently 3.0 %). Persisted by the weekly cron
+  /// but always live-recomputed by getMyStreak.
+  currentApy   Float    @default(3.0) @map("current_apy")
   /// Multi-factor APY bonuses (computed from Strava data)
   regularityBonus  Float @default(0) @map("regularity_bonus")
   longRunBonus     Float @default(0) @map("long_run_bonus")
   progressionBonus Float @default(0) @map("progression_bonus")
-  /// Effective APY = currentApy + sum(bonuses), capped at 9%
-  effectiveApy     Float @default(4.0) @map("effective_apy")
+  /// Effective APY = baseline + score-weighted pool bonus, capped at 12 %.
+  effectiveApy     Float @default(3.0) @map("effective_apy")
   /// Sessions this week (for regularity tracking)
   weekSessions     Int   @default(0) @map("week_sessions")
   /// Longest single run this week in km

@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import type { VerifyBody } from "./auth.schemas.js";
-import { computeApy } from "../streaks/apy.utils.js";
+import { APY } from "../../config/constants.js";
 
 export async function verifyAndUpsertUser(
   prisma: PrismaClient,
@@ -40,7 +40,10 @@ export async function verifyAndUpsertUser(
           currentCount: 0,
           longestCount: 0,
           lastWeekMet: false,
-          currentApy: computeApy(0),
+          // Pool-model baseline: every brand-new user starts at 3 %, not the
+          // legacy 4 % the tiered APY function returned.
+          currentApy: APY.BASELINE,
+          effectiveApy: APY.BASELINE,
         },
       },
     },

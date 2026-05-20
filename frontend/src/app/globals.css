@@ -19,6 +19,21 @@ body {
   overscroll-behavior: contain;
 }
 
+/* Browser autofill (Chrome/Safari) paints inputs yellow by default; on the
+   dark theme this reads as a bug. Restore the dark surface + light text by
+   forcing an inset shadow that masks the yellow, and override the fill color. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.02) inset !important;
+  box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.02) inset !important;
+  -webkit-text-fill-color: #F5F5F7 !important;
+  caret-color: #F5F5F7;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* Eliminate 300ms tap delay on all interactive elements */
 button,
 a,

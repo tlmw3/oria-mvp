@@ -11,7 +11,7 @@ export const APY = {
   /// New pool-based model
   BASELINE: 3.0,             // guaranteed for everyone
   SPREAD: 1.0,               // Oria keeps 1% of vault APY
-  POOL_CAP_MULTIPLIER: 2.0,  // max individual bonus = pool × this
+  POOL_CAP_MULTIPLIER: 4.0,  // max individual bonus = pool × this — widened so higher streaks differentiate visually instead of clustering at the cap
   FALLBACK_VAULT_APY: 5.5,   // used if Morpho fetch fails (rough Steakhouse Prime USDC avg)
   /// Score weights (must sum to 1.0)
   SCORE_STREAK_WEIGHT: 0.6,
